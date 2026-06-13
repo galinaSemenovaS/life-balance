@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCachedDashboardData } from "@/lib/data/queries";
-import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday } from "@/lib/progress";
+import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday, isTaskDueToday } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { WheelChart } from "@/components/wheel/WheelChart";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,12 +26,13 @@ export default async function DashboardPage() {
   }));
 
   const dueHabits = habits.filter((h) => isHabitDueToday(h, today));
+  const dueTasks = todayTasks.filter((t) => isTaskDueToday(t, today));
   const dayProgress = getTodayProgress(
     dueHabits.map((h) => ({
       ...h,
       logs: h.logs.filter((l) => isSameDay(l.date, today)),
     })),
-    todayTasks,
+    dueTasks,
     today
   );
 
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
       <Card className="space-y-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Прогресс дня</CardTitle>
-          <span className="text-sm font-semibold text-emerald-600">
+          <span className="text-sm font-semibold text-teal-600">
             {dayProgress.percent}%
           </span>
         </div>
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
                   />
                   <span className="font-medium">{s.name}</span>
                 </div>
-                <span className="text-emerald-600">{s.score}/10</span>
+                <span className="text-teal-600">{s.score}/10</span>
               </Card>
             </Link>
           ))}

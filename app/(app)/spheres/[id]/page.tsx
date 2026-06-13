@@ -57,7 +57,7 @@ export default async function SphereDetailPage({
           <div>
             <h1 className="text-xl font-bold">{sphere.name}</h1>
             {score !== undefined && (
-              <p className="text-sm text-emerald-600">Оценка: {score}/10</p>
+              <p className="text-sm text-teal-600">Оценка: {score}/10</p>
             )}
           </div>
         </div>
@@ -78,7 +78,7 @@ export default async function SphereDetailPage({
           />
         ) : (
           sphere.goals.map((goal) => (
-            <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+            <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
               <Card className={cn("space-y-1 py-3 hover:bg-slate-50 dark:hover:bg-slate-900", interactiveCard)}>
                 <p className="font-medium">{goal.title}</p>
                 <p className="text-xs text-slate-500">

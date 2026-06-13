@@ -36,7 +36,7 @@ export function BottomNav() {
                 "flex min-w-[56px] flex-col items-center gap-1 rounded-2xl px-2 py-1.5 text-[11px] font-medium transition-all",
                 tapScale,
                 active
-                  ? "bg-emerald-100/90 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300"
+                  ? "bg-teal-100/90 text-teal-700 dark:bg-teal-950/80 dark:text-teal-300"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >

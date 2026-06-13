@@ -101,7 +101,6 @@ export function getCachedSpheresPageData(userId: string) {
 
 async function fetchTodayData(userId: string) {
   const today = startOfDay(new Date());
-  const todayEnd = endOfDay(today);
 
   const [habits, tasks] = await Promise.all([
     prisma.habit.findMany({
@@ -111,6 +110,7 @@ async function fetchTodayData(userId: string) {
         title: true,
         frequency: true,
         schedule: true,
+        endDate: true,
         isActive: true,
         sphere: { select: { name: true, color: true } },
         goal: { select: { title: true } },
@@ -123,13 +123,13 @@ async function fetchTodayData(userId: string) {
     prisma.task.findMany({
       where: {
         goal: { userId, status: "ACTIVE" },
-        dueDate: { gte: today, lte: todayEnd },
       },
       select: {
         id: true,
         title: true,
         status: true,
         dueDate: true,
+        recurrence: true,
         goal: { select: { title: true } },
       },
     }),
@@ -148,7 +148,6 @@ export function getCachedTodayData(userId: string) {
 
 async function fetchDashboardData(userId: string) {
   const today = startOfDay(new Date());
-  const todayEnd = endOfDay(today);
   const monthAgo = subDays(today, 30);
 
   const [scores, goals, habits, todayTasks] = await Promise.all([
@@ -170,6 +169,7 @@ async function fetchDashboardData(userId: string) {
         title: true,
         frequency: true,
         schedule: true,
+        endDate: true,
         isActive: true,
         logs: {
           where: { date: { gte: monthAgo } },
@@ -181,9 +181,13 @@ async function fetchDashboardData(userId: string) {
     prisma.task.findMany({
       where: {
         goal: { userId, status: "ACTIVE" },
-        dueDate: { gte: today, lte: todayEnd },
       },
-      select: { id: true, status: true, dueDate: true },
+      select: {
+        id: true,
+        status: true,
+        dueDate: true,
+        recurrence: true,
+      },
     }),
   ]);
 

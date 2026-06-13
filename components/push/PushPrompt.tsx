@@ -79,7 +79,7 @@ export function PushPrompt() {
         <X className="h-4 w-4" />
       </button>
       <div className="flex items-start gap-3">
-        <Bell className="mt-0.5 h-5 w-5 text-emerald-600" />
+        <Bell className="mt-0.5 h-5 w-5 text-teal-600" />
         <div className="flex-1 space-y-2">
           <p className="text-sm font-medium">Включить напоминания?</p>
           <p className="text-xs text-slate-500">

@@ -102,7 +102,7 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
                     />
                     {sphere.name}
                   </span>
-                  <span className="text-emerald-600">{scores[sphere.id]}</span>
+                  <span className="text-teal-600">{scores[sphere.id]}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -168,7 +168,7 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
                   "flex items-center gap-2 rounded-xl border p-3 text-left text-sm",
                   tapScale,
                   selected &&
-                    "border-emerald-500 bg-emerald-50 dark:bg-emerald-950",
+                    "border-teal-500 bg-teal-50 dark:bg-teal-950",
                   !selected &&
                     isLow &&
                     "border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40",

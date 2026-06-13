@@ -26,6 +26,14 @@ export default async function GoalPage({
 
   if (!goal) notFound();
 
+  const mapTask = (t: (typeof goal.tasks)[0]) => ({
+    id: t.id,
+    title: t.title,
+    status: t.status,
+    dueDate: t.dueDate?.toISOString() ?? null,
+    recurrence: t.recurrence,
+  });
+
   return (
     <GoalDetail
       goal={{
@@ -40,23 +48,15 @@ export default async function GoalPage({
         id: s.id,
         title: s.title,
         order: s.order,
-        tasks: s.tasks.map((t) => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-          dueDate: t.dueDate?.toISOString() ?? null,
-        })),
+        tasks: s.tasks.map(mapTask),
       }))}
-      looseTasks={goal.tasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-        dueDate: t.dueDate?.toISOString() ?? null,
-      }))}
+      looseTasks={goal.tasks.map(mapTask)}
       habits={goal.habits.map((h) => ({
         id: h.id,
         title: h.title,
         reminderTime: h.reminderTime,
+        schedule: h.schedule,
+        endDate: h.endDate?.toISOString() ?? null,
       }))}
     />
   );

@@ -1,5 +1,10 @@
-import { startOfDay, subDays, isSameDay } from "date-fns";
+import { startOfDay, isSameDay } from "date-fns";
 import type { Habit, HabitLog, Task } from "@prisma/client";
+import {
+  isDueOnDate,
+  parseRecurrenceJson,
+  type RecurrenceRule,
+} from "@/lib/recurrence";
 
 export function getHabitStreak(
   logs: Pick<HabitLog, "date" | "completed">[],
@@ -16,7 +21,7 @@ export function getHabitStreak(
 
   while (completedDates.has(cursor.getTime())) {
     streak++;
-    cursor = subDays(cursor, 1);
+    cursor = new Date(cursor.getTime() - 86400000);
   }
 
   return streak;
@@ -28,24 +33,51 @@ export function getGoalProgress(tasks: Pick<Task, "status">[]): number {
   return Math.round((done / tasks.length) * 100);
 }
 
-export function isHabitDueToday(
-  habit: Pick<Habit, "frequency" | "schedule">,
-  date = new Date()
-): boolean {
-  if (habit.frequency === "DAILY") return true;
+function habitRecurrence(habit: Pick<Habit, "frequency" | "schedule">): RecurrenceRule {
+  const schedule = habit.schedule as Record<string, unknown> | null;
+  if (schedule?.preset) return parseRecurrenceJson(schedule);
   if (habit.frequency === "WEEKLY") {
-    const schedule = habit.schedule as { days?: number[] } | null;
-    const day = date.getDay();
-    return schedule?.days?.includes(day) ?? day === 1;
+    return parseRecurrenceJson({
+      preset: "weekly",
+      daysOfWeek: (schedule?.days as number[]) ?? [1, 2, 3, 4, 5],
+    });
   }
-  return true;
+  return parseRecurrenceJson({ preset: "daily" });
 }
 
-type HabitForProgress = Pick<Habit, "frequency" | "schedule" | "isActive"> & {
+export function isHabitDueToday(
+  habit: Pick<Habit, "frequency" | "schedule" | "endDate">,
+  date = new Date()
+): boolean {
+  if (habit.endDate && startOfDay(date) > startOfDay(habit.endDate)) return false;
+  const rule = habitRecurrence(habit);
+  if (rule.endType === "onDate" && rule.endDate) {
+    if (startOfDay(date) > startOfDay(new Date(rule.endDate))) return false;
+  }
+  return isDueOnDate(rule, date);
+}
+
+export function isTaskDueToday(
+  task: Pick<Task, "dueDate" | "recurrence" | "status">,
+  date = new Date()
+): boolean {
+  if (task.status === "COMPLETED" && !task.recurrence) return false;
+  const rule = parseRecurrenceJson(task.recurrence);
+  const anchor = task.dueDate ?? date;
+  if (rule.preset === "none") {
+    return task.dueDate ? isSameDay(task.dueDate, date) : false;
+  }
+  return isDueOnDate(rule, date, anchor);
+}
+
+type HabitForProgress = Pick<
+  Habit,
+  "frequency" | "schedule" | "isActive" | "endDate"
+> & {
   logs: Pick<HabitLog, "date" | "completed">[];
 };
 
-type TaskForProgress = Pick<Task, "status" | "dueDate">;
+type TaskForProgress = Pick<Task, "status" | "dueDate" | "recurrence">;
 
 export function getTodayProgress(
   habits: HabitForProgress[],
@@ -59,9 +91,7 @@ export function getTodayProgress(
     h.logs.some((l) => l.completed && isSameDay(l.date, today))
   ).length;
 
-  const todayTasks = tasks.filter(
-    (t) => t.dueDate && isSameDay(t.dueDate, today)
-  );
+  const todayTasks = tasks.filter((t) => isTaskDueToday(t, today));
   const taskDone = todayTasks.filter((t) => t.status === "COMPLETED").length;
 
   const total = dueHabits.length + todayTasks.length;
@@ -73,3 +103,5 @@ export function getTodayProgress(
     percent: total === 0 ? 0 : Math.round((completed / total) * 100),
   };
 }
+
+export { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";

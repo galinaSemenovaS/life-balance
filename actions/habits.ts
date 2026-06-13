@@ -4,14 +4,30 @@ import { startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
+import {
+  getNextOccurrence,
+  parseRecurrenceJson,
+  recurrenceToFrequency,
+  type RecurrenceRule,
+} from "@/lib/recurrence";
+
+function endDateFromRule(rule: RecurrenceRule): Date | undefined {
+  if (rule.endType === "onDate" && rule.endDate) {
+    return startOfDay(new Date(rule.endDate));
+  }
+  return undefined;
+}
 
 export async function createHabit(data: {
   title: string;
   goalId: string;
   reminderTime?: string;
-  frequency?: "DAILY" | "WEEKLY";
+  recurrenceJson?: string;
 }) {
   const user = await requireUser();
+  const rule = parseRecurrenceJson(
+    data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
+  );
 
   const goal = await prisma.goal.findFirst({
     where: { id: data.goalId, userId: user.id },
@@ -26,7 +42,9 @@ export async function createHabit(data: {
       sphereId: goal.sphereId,
       goalId: goal.id,
       reminderTime: data.reminderTime,
-      frequency: data.frequency ?? "DAILY",
+      frequency: recurrenceToFrequency(rule),
+      schedule: rule as object,
+      endDate: endDateFromRule(rule),
     },
   });
 

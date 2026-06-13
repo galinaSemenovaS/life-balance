@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
+import { getNextOccurrence, parseRecurrenceJson } from "@/lib/recurrence";
 
 export async function createGoal(data: {
   sphereId: string;
@@ -71,6 +72,7 @@ export async function createTask(data: {
   planStepId?: string;
   title: string;
   dueDate?: string;
+  recurrenceJson?: string;
 }) {
   const user = await requireUser();
   const goal = await prisma.goal.findFirst({
@@ -78,12 +80,17 @@ export async function createTask(data: {
   });
   if (!goal) throw new Error("Goal not found");
 
+  const rule = parseRecurrenceJson(
+    data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
+  );
+
   const task = await prisma.task.create({
     data: {
       goalId: data.goalId,
       planStepId: data.planStepId,
       title: data.title,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      recurrence: rule.preset !== "none" ? (rule as object) : undefined,
     },
   });
 
@@ -98,10 +105,23 @@ export async function toggleTask(taskId: string, completed: boolean) {
   });
   if (!task) throw new Error("Task not found");
 
-  await prisma.task.update({
-    where: { id: taskId },
-    data: { status: completed ? "COMPLETED" : "PENDING" },
-  });
+  const rule = parseRecurrenceJson(task.recurrence);
+
+  if (completed && rule.preset !== "none") {
+    const next = getNextOccurrence(rule, task.dueDate ?? new Date());
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: "PENDING",
+        dueDate: next ?? task.dueDate,
+      },
+    });
+  } else {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: completed ? "COMPLETED" : "PENDING" },
+    });
+  }
 
   revalidateUserData(user.id);
 }

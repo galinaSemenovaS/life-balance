@@ -1,13 +1,15 @@
 import { getCachedTodayData } from "@/lib/data/queries";
-import { isHabitDueToday } from "@/lib/progress";
+import { isHabitDueToday, isTaskDueToday } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { TodayList } from "@/components/today/TodayList";
+import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
 
 export default async function TodayPage() {
   const user = await getSessionUser();
   const { habits, tasks, today } = await getCachedTodayData(user.id);
 
   const dueHabits = habits.filter((h) => isHabitDueToday(h, today));
+  const dueTasks = tasks.filter((t) => isTaskDueToday(t, today));
 
   return (
     <TodayList
@@ -16,13 +18,15 @@ export default async function TodayPage() {
         title: h.title,
         sphereName: h.sphere?.name,
         goalTitle: h.goal?.title,
+        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(h.schedule)),
         color: h.sphere?.color,
         completed: h.logs.some((l) => l.completed),
       }))}
-      tasks={tasks.map((t) => ({
+      tasks={dueTasks.map((t) => ({
         id: t.id,
         title: t.title,
         goalTitle: t.goal.title,
+        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(t.recurrence)),
         completed: t.status === "COMPLETED",
       }))}
     />

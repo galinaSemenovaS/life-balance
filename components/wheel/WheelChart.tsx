@@ -88,8 +88,8 @@ export function WheelChart({
             <Radar
               name="Оценка"
               dataKey="score"
-              stroke="#10b981"
-              fill="#10b981"
+              stroke="#0d9488"
+              fill="#14b8a6"
               fillOpacity={0.25}
               strokeWidth={2}
               dot={(props) => {
@@ -155,7 +155,7 @@ export function WheelChart({
       {selected && (
         <p className="mt-1 text-center text-sm text-slate-500">
           {data.find((d) => d.sphereId === selected)?.name}:{" "}
-          <span className="font-semibold text-emerald-600">
+          <span className="font-semibold text-teal-600">
             {data.find((d) => d.sphereId === selected)?.score}/10
           </span>
         </p>

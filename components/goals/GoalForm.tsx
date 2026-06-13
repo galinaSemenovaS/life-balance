@@ -1,56 +1,59 @@
 "use client";
 
 import { useTransition } from "react";
-import { createGoal } from "@/actions/goals";
+import { createGoal, createTask } from "@/actions/goals";
 import { createHabit } from "@/actions/habits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CollapsibleForm } from "@/components/ui/collapsible-form";
+import { RecurrencePicker } from "@/components/ui/recurrence-picker";
 import { toast } from "sonner";
 
 export function CreateGoalForm({ sphereId }: { sphereId: string }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <form
-      className="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800"
-      action={(formData) => {
-        startTransition(async () => {
-          try {
-            await createGoal({
-              sphereId,
-              title: formData.get("title") as string,
-              description: (formData.get("description") as string) || undefined,
-              deadline: (formData.get("deadline") as string) || undefined,
-            });
-            toast.success("Цель создана");
-          } catch {
-            toast.error("Ошибка создания цели");
-          }
-        });
-      }}
+    <CollapsibleForm
+      label="Добавить цель"
+      hint="Привычки создаются внутри цели"
     >
-      <h3 className="font-semibold">Новая цель</h3>
-      <p className="text-xs text-slate-500">
-        Привычки добавляются внутри цели — так они поддерживают конкретный результат
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor="title">Название</Label>
-        <Input id="title" name="title" required placeholder="Например: Бегать 3 раза в неделю" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="description">Описание</Label>
-        <Textarea id="description" name="description" placeholder="Зачем эта цель?" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="deadline">Дедлайн</Label>
-        <Input id="deadline" name="deadline" type="date" />
-      </div>
-      <Button type="submit" className="w-full" disabled={pending}>
-        Создать цель
-      </Button>
-    </form>
+      <form
+        className="space-y-3"
+        action={(formData) => {
+          startTransition(async () => {
+            try {
+              await createGoal({
+                sphereId,
+                title: formData.get("title") as string,
+                description: (formData.get("description") as string) || undefined,
+                deadline: (formData.get("deadline") as string) || undefined,
+              });
+              toast.success("Цель создана");
+            } catch {
+              toast.error("Ошибка создания цели");
+            }
+          });
+        }}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="title">Название</Label>
+          <Input id="title" name="title" required placeholder="Например: Выучить испанский" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Описание</Label>
+          <Textarea id="description" name="description" placeholder="Зачем эта цель?" rows={2} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="deadline">Дедлайн цели</Label>
+          <Input id="deadline" name="deadline" type="date" />
+        </div>
+        <Button type="submit" className="w-full" disabled={pending}>
+          Создать цель
+        </Button>
+      </form>
+    </CollapsibleForm>
   );
 }
 
@@ -58,38 +61,91 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <form
-      className="space-y-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-800"
-      action={(formData) => {
-        startTransition(async () => {
-          try {
-            await createHabit({
-              title: formData.get("title") as string,
-              goalId,
-              reminderTime: (formData.get("reminderTime") as string) || undefined,
-            });
-            toast.success("Привычка добавлена");
-          } catch {
-            toast.error("Ошибка");
-          }
-        });
-      }}
-    >
-      <h3 className="font-semibold">Новая привычка</h3>
-      <p className="text-xs text-slate-500">
-        Ежедневное действие, которое приближает к этой цели
-      </p>
-      <div className="space-y-2">
-        <Label htmlFor="habit-title">Название</Label>
-        <Input id="habit-title" name="title" required placeholder="Например: 10 минут медитации" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="reminderTime">Напоминание</Label>
-        <Input id="reminderTime" name="reminderTime" type="time" />
-      </div>
-      <Button type="submit" className="w-full" disabled={pending}>
-        Добавить привычку
-      </Button>
-    </form>
+    <CollapsibleForm label="Добавить привычку">
+      <form
+        className="space-y-3"
+        action={(formData) => {
+          startTransition(async () => {
+            try {
+              await createHabit({
+                title: formData.get("title") as string,
+                goalId,
+                reminderTime: (formData.get("reminderTime") as string) || undefined,
+                recurrenceJson: formData.get("recurrence") as string,
+              });
+              toast.success("Привычка добавлена");
+            } catch {
+              toast.error("Ошибка");
+            }
+          });
+        }}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="habit-title">Название</Label>
+          <Input
+            id="habit-title"
+            name="title"
+            required
+            placeholder="Например: 10 минут медитации"
+          />
+        </div>
+        <RecurrencePicker
+          defaultValue={{
+            preset: "daily",
+            interval: 1,
+            unit: "day",
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endType: "never",
+          }}
+        />
+        <div className="space-y-2">
+          <Label htmlFor="reminderTime">Напоминание</Label>
+          <Input id="reminderTime" name="reminderTime" type="time" />
+        </div>
+        <Button type="submit" className="w-full" disabled={pending}>
+          Добавить привычку
+        </Button>
+      </form>
+    </CollapsibleForm>
+  );
+}
+
+export function CreateTaskForm({ goalId }: { goalId: string }) {
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <CollapsibleForm label="Добавить задачу">
+      <form
+        className="space-y-3"
+        action={(formData) => {
+          startTransition(async () => {
+            try {
+              await createTask({
+                goalId,
+                title: formData.get("taskTitle") as string,
+                dueDate: (formData.get("dueDate") as string) || undefined,
+                recurrenceJson: formData.get("recurrence") as string,
+              });
+              toast.success("Задача добавлена");
+            } catch {
+              toast.error("Ошибка");
+            }
+          });
+        }}
+      >
+        <div className="space-y-2">
+          <Label htmlFor="taskTitle">Название</Label>
+          <Input id="taskTitle" name="taskTitle" required placeholder="Что сделать?" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="dueDate">Дата</Label>
+          <Input id="dueDate" name="dueDate" type="date" />
+        </div>
+        <RecurrencePicker />
+        <Button type="submit" className="w-full" disabled={pending}>
+          Добавить задачу
+        </Button>
+      </form>
+    </CollapsibleForm>
   );
 }

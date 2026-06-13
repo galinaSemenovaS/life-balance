@@ -11,7 +11,7 @@ export function PageHeader({
 }) {
   return (
     <div className={cn("space-y-1", className)}>
-      <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-emerald-300 dark:via-teal-300 dark:to-cyan-300">
+      <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-teal-300 dark:via-teal-300 dark:to-cyan-300">
         {title}
       </h1>
       {subtitle ? (

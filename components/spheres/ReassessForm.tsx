@@ -23,7 +23,7 @@ export function ReassessForm({ spheres }: { spheres: Sphere[] }) {
         <div key={sphere.id} className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>{sphere.name}</span>
-            <span className="text-emerald-600">{scores[sphere.id]}</span>
+            <span className="text-teal-600">{scores[sphere.id]}</span>
           </div>
           <Slider
             min={1}

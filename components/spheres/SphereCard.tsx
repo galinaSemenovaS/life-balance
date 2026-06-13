@@ -25,19 +25,19 @@ export function SphereCard({
   return (
     <Link
       href={`/spheres/${id}`}
-      className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+      className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
     >
       <Card
         className={cn(
           "relative overflow-hidden border-l-4 py-3 pl-3.5",
           interactiveCard,
-          isPriority && "ring-1 ring-emerald-500/20"
+          isPriority && "ring-1 ring-teal-500/20"
         )}
         style={{ borderLeftColor: color }}
       >
         {isPriority ? (
-          <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/80">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          <div className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-950/80">
+            <Sparkles className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" />
           </div>
         ) : null}
         <div className="flex items-center justify-between pr-8">
@@ -48,13 +48,13 @@ export function SphereCard({
             />
             <span className="font-semibold">{name}</span>
             {isPriority ? (
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700 dark:bg-teal-950 dark:text-teal-300">
                 приоритет
               </span>
             ) : null}
           </div>
           {score !== undefined ? (
-            <span className="text-sm font-bold tabular-nums text-emerald-600">
+            <span className="text-sm font-bold tabular-nums text-teal-600">
               {score}/10
             </span>
           ) : null}

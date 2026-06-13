@@ -14,6 +14,7 @@ type HabitItem = {
   title: string;
   sphereName?: string;
   goalTitle?: string;
+  recurrenceLabel?: string;
   color?: string;
   completed: boolean;
 };
@@ -22,6 +23,7 @@ type TaskItem = {
   id: string;
   title: string;
   goalTitle: string;
+  recurrenceLabel?: string;
   completed: boolean;
 };
 
@@ -52,7 +54,7 @@ export function TodayList({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-emerald-300 dark:via-teal-300 dark:to-cyan-300">
+        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-teal-300 dark:via-teal-300 dark:to-cyan-300">
           Сегодня
         </h1>
         <p className="text-sm text-slate-500">
@@ -67,7 +69,7 @@ export function TodayList({
       <Card className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">Прогресс дня</span>
-          <span className="text-emerald-600">{percent}%</span>
+          <span className="text-sm font-semibold text-teal-600">{percent}%</span>
         </div>
         <Progress value={percent} />
         <p className="text-xs text-slate-500">
@@ -112,9 +114,10 @@ export function TodayList({
                     {habit.goalTitle && (
                       <p className="text-xs text-slate-500">Цель: {habit.goalTitle}</p>
                     )}
-                    {!habit.goalTitle && habit.sphereName && (
-                      <p className="text-xs text-slate-500">{habit.sphereName}</p>
-                    )}
+                    {habit.recurrenceLabel &&
+                    habit.recurrenceLabel !== "Не повторяется" ? (
+                      <p className="text-xs text-slate-400">{habit.recurrenceLabel}</p>
+                    ) : null}
                   </div>
                   {habit.color && (
                     <span
@@ -154,6 +157,10 @@ export function TodayList({
                   <div className="flex-1">
                     <p className="font-medium">{task.title}</p>
                     <p className="text-xs text-slate-500">{task.goalTitle}</p>
+                    {task.recurrenceLabel &&
+                    task.recurrenceLabel !== "Не повторяется" ? (
+                      <p className="text-xs text-slate-400">{task.recurrenceLabel}</p>
+                    ) : null}
                   </div>
                 </Card>
               ))}

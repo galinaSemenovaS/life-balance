@@ -151,6 +151,7 @@ model Task {
   planStepId String?
   title      String
   dueDate    DateTime?
+  recurrence Json?
   status     TaskStatus       @default(PENDING)
   goal       Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
   planStep   PlanStep?        @relation(fields: [planStepId], references: [id], onDelete: SetNull)
@@ -175,6 +176,7 @@ model Habit {
   frequency    HabitFrequency @default(DAILY)
   schedule     Json?
   reminderTime String?
+  endDate      DateTime?
   isActive     Boolean        @default(true)
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   sphere       Sphere?        @relation(fields: [sphereId], references: [id], onDelete: SetNull)
