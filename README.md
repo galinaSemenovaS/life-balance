@@ -1,36 +1,142 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Колесо баланса
 
-## Getting Started
+Мобильное PWA для оценки 8 сфер жизни, постановки целей, планов, задач и ежедневных привычек.
 
-First, run the development server:
+## Стек
+
+- Next.js 15 (App Router), React 19, Tailwind CSS
+- Prisma 5 + PostgreSQL (Neon)
+- NextAuth v5 + Google OAuth
+- Recharts, Web Push, Vercel Cron
+
+## Быстрый старт
+
+1. Скопируйте `.env.example` в `.env` и заполните переменные.
+2. Создайте БД и примените схему:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm db:push
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Запустите dev-сервер:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Откройте [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+## Переменные окружения
 
-To learn more about Next.js, take a look at the following resources:
+| Переменная | Описание |
+|---|---|
+| `DATABASE_URL` | Neon **pooled** connection (хост с `-pooler`) |
+| `DIRECT_URL` | Neon **direct** connection (для `db:push` / migrate) |
+| `AUTH_SECRET` | Секрет NextAuth (`openssl rand -base64 32`) |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push (`npx web-push generate-vapid-keys`) |
+| `CRON_SECRET` | Защита cron-эндпоинта на Vercel |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Экраны
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Сегодня** — привычки и задачи на день
+- **Дашборд** — колесо, прогресс дня, цели, streaks
+- **Сферы** — 8 областей жизни, переоценка
+- **Аналитика** — графики оценок и привычек
+- **Настройки** — уведомления, переименование сфер
 
-## Deploy on Vercel
+## PWA и push
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Добавьте приложение на домашний экран (обязательно для push на iOS).
+- Напоминания: cron `/api/cron/send-reminders` (на Hobby Vercel — 1 раз в день; для каждые 15 мин нужен Pro или внешний cron-сервис)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Производительность
+
+### Dev vs Prod
+
+`pnpm dev` всегда медленнее из-за компиляции RSC. Для реальной оценки скорости:
+
+```bash
+pnpm build && pnpm start
+```
+
+### Кэш данных
+
+Чтение страниц кэшируется на 30 сек (`unstable_cache` + тег `user-{id}`). После изменений кэш сбрасывается через server actions.
+
+### Neon: регион БД
+
+Если запросы >500 ms, перенесите БД ближе к себе:
+
+1. [Neon Console](https://console.neon.tech) → **New Project** → регион **Frankfurt (eu-central-1)**
+2. Скопируйте **Pooled** и **Direct** connection strings
+3. Обновите `DATABASE_URL` и `DIRECT_URL` в `.env`
+4. Перенесите данные (если нужно):
+   ```bash
+   pg_dump "$OLD_DIRECT_URL" | psql "$NEW_DIRECT_URL"
+   ```
+5. `pnpm db:push`
+
+Ожидаемый эффект из EU/RU: **−300–600 ms** на каждый запрос к БД.
+
+### После обновления auth
+
+Если после деплоя снова попадаете на онбординг — выйдите и войдите заново (обновится JWT с полем `onboarded`).
+
+## Деплой на Vercel
+
+### 1. Подготовка
+
+```bash
+pnpm install
+pnpm db:push          # схема в Neon (локально, через DIRECT_URL)
+pnpm build            # проверка сборки
+```
+
+### 2. Деплой
+
+```bash
+pnpm dlx vercel login
+pnpm dlx vercel link
+pnpm dlx vercel env pull .env.vercel.local   # опционально
+pnpm dlx vercel --prod
+```
+
+Или подключите GitHub-репозиторий в [Vercel Dashboard](https://vercel.com/new).
+
+### 3. Environment Variables на Vercel
+
+Скопируйте из локального `.env` (Settings → Environment Variables → Production):
+
+| Переменная | Значение |
+|---|---|
+| `DATABASE_URL` | Neon pooled URL |
+| `AUTH_SECRET` | тот же или новый секрет |
+| `AUTH_GOOGLE_ID` | из Google Console |
+| `AUTH_GOOGLE_SECRET` | из Google Console |
+| `AUTH_URL` | `https://life-balance-murex.vercel.app` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | из `web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | из `web-push generate-vapid-keys` |
+| `VAPID_SUBJECT` | `mailto:ваш@email.com` |
+| `CRON_SECRET` | случайная строка |
+
+`DIRECT_URL` на Vercel **не нужен** (только для локального `db:push`).
+
+### 4. Google OAuth — обновить URI
+
+Замените `ВАШ-ПРОЕКТ` на `life-balance-murex` (или ваш домен):
+
+**Authorized JavaScript origins:**
+- `http://localhost:3000` (для dev)
+- `https://life-balance-murex.vercel.app`
+
+**Authorized redirect URIs:**
+- `http://localhost:3000/api/auth/callback/google`
+- `https://life-balance-murex.vercel.app/api/auth/callback/google`
+
+### 5. После деплоя
+
+1. Откройте https://life-balance-murex.vercel.app
+2. Войдите через Google
+3. Добавьте PWA на домашний экран (для push на iOS)
+4. Cron `/api/cron/send-reminders` работает по расписанию из `vercel.json` (нужен `CRON_SECRET`)
