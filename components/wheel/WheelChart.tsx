@@ -23,12 +23,14 @@ type WheelChartProps = {
   selectedSphereId?: string | null;
   onSphereSelect?: (sphereId: string) => void;
   className?: string;
+  hideFooter?: boolean;
+  fullBleed?: boolean;
 };
 
 const sizes = {
   sm: 220,
   md: 280,
-  lg: 340,
+  lg: 360,
 };
 
 export function WheelChart({
@@ -37,6 +39,8 @@ export function WheelChart({
   selectedSphereId,
   onSphereSelect,
   className,
+  hideFooter = false,
+  fullBleed = false,
 }: WheelChartProps) {
   const [mounted, setMounted] = useState(false);
   const [internalSelected, setInternalSelected] = useState<string | null>(null);
@@ -59,7 +63,13 @@ export function WheelChart({
   };
 
   return (
-    <div className={cn("w-full min-w-0", className)}>
+    <div
+      className={cn(
+        "w-full min-w-0",
+        fullBleed && "-mx-2",
+        className
+      )}
+    >
       <div
         className="flex w-full justify-center"
         style={{ height: dimension }}
@@ -73,25 +83,32 @@ export function WheelChart({
             outerRadius={dimension * 0.36}
             data={chartData}
           >
-            <PolarGrid stroke="#e2e8f0" className="dark:stroke-slate-700" gridType="polygon" />
+            <PolarGrid
+              stroke="var(--border)"
+              gridType="polygon"
+              radialLines={true}
+            />
             <PolarAngleAxis
               dataKey="name"
-              tick={{ fill: "#64748b", fontSize: 10 }}
+              tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "inherit" }}
             />
             <PolarRadiusAxis
               angle={90}
               domain={[0, 10]}
               tickCount={6}
               axisLine={false}
-              tick={{ fill: "#94a3b8", fontSize: 9 }}
+              tick={{ fill: "var(--muted)", fontSize: 9, fontFamily: "inherit" }}
             />
             <Radar
               name="Оценка"
               dataKey="score"
-              stroke="#0d9488"
-              fill="#14b8a6"
-              fillOpacity={0.25}
-              strokeWidth={2}
+              stroke="var(--foreground)"
+              fill="var(--accent)"
+              fillOpacity={0.12}
+              strokeWidth={1.5}
+              isAnimationActive
+              animationDuration={300}
+              animationEasing="ease-out"
               dot={(props) => {
                 const { cx, cy, payload, index } = props;
                 if (cx == null || cy == null) return null;
@@ -103,59 +120,47 @@ export function WheelChart({
                   <g
                     key={index}
                     onClick={() => handleSelect(point)}
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: point.sphereId ? "pointer" : "default" }}
                   >
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={22}
-                      fill="transparent"
-                    />
+                    <circle cx={cx} cy={cy} r={24} fill="transparent" />
                     {isActive && (
                       <circle
                         cx={cx}
                         cy={cy}
-                        r={14}
+                        r={16}
                         fill={point.color}
-                        fillOpacity={0.2}
+                        fillOpacity={0.18}
                         className="sphere-dot-active"
                       />
                     )}
                     <circle
                       cx={cx}
                       cy={cy}
-                      r={isActive ? 9 : 6}
+                      r={isActive ? 8 : 5}
                       fill={point.color}
-                      stroke="#fff"
+                      stroke="var(--surface)"
                       strokeWidth={2}
-                      className={cn(isActive && "sphere-dot-active")}
+                      className={cn(
+                        "transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                        isActive && "sphere-dot-active"
+                      )}
                     />
-                    {isActive && (
-                      <text
-                        x={cx}
-                        y={cy - 18}
-                        textAnchor="middle"
-                        fill="currentColor"
-                        className="fill-slate-900 dark:fill-slate-100"
-                        fontSize={14}
-                        fontWeight={700}
-                      >
-                        {point.score}
-                      </text>
-                    )}
                   </g>
                 );
               }}
             />
           </RadarChart>
         ) : (
-          <div style={{ width: dimension, height: dimension }} />
+          <div
+            className="border border-[var(--border)] bg-[var(--surface)]"
+            style={{ width: dimension, height: dimension }}
+          />
         )}
       </div>
-      {selected && (
-        <p className="mt-1 text-center text-sm text-slate-500">
+      {!hideFooter && selected && (
+        <p className="mt-2 text-center text-sm text-[var(--muted)]">
           {data.find((d) => d.sphereId === selected)?.name}:{" "}
-          <span className="font-semibold text-teal-600">
+          <span className="font-display font-semibold text-[var(--foreground)]">
             {data.find((d) => d.sphereId === selected)?.score}/10
           </span>
         </p>

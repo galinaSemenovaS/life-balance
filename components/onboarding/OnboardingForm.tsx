@@ -3,12 +3,15 @@
 import { useState, useTransition } from "react";
 import { completeOnboarding } from "@/actions/onboarding";
 import { WheelChart } from "@/components/wheel/WheelChart";
+import {
+  ActiveScoreDisplay,
+  OnboardingStepIndicator,
+} from "@/components/onboarding/OnboardingEditorial";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { interactiveCard, selectedRing, tapScale } from "@/lib/ui-classes";
+import { interactiveCard, selectedAccentBar, tapScale } from "@/lib/ui-classes";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,7 +29,9 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
     Object.fromEntries(spheres.map((s) => [s.id, 5]))
   );
   const [priorities, setPriorities] = useState<string[]>([]);
-  const [activeSphere, setActiveSphere] = useState<string | null>(null);
+  const [activeSphere, setActiveSphere] = useState<string | null>(
+    spheres[0]?.id ?? null
+  );
   const [pending, startTransition] = useTransition();
 
   const wheelData = spheres.map((s) => ({
@@ -35,6 +40,8 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
     color: s.color,
     sphereId: s.id,
   }));
+
+  const activeSphereData = spheres.find((s) => s.id === activeSphere);
 
   const togglePriority = (id: string) => {
     setPriorities((prev) => {
@@ -58,54 +65,66 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
 
   if (step === 0) {
     return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Добро пожаловать</h1>
-          <p className="mt-2 text-sm text-slate-500">
+      <div className="space-y-8">
+        <OnboardingStepIndicator step={0} total={2} label="Оценка" />
+
+        <div className="space-y-1">
+          <h1 className="font-display text-3xl font-semibold tracking-tight">
+            Добро пожаловать
+          </h1>
+          <p className="max-w-sm text-sm leading-relaxed text-[var(--muted)]">
             Оцените каждую сферу от 1 до 10 — насколько вы довольны ею сейчас
           </p>
-          <p className="mt-1 text-xs text-slate-400">
-            Нажмите на точку колеса, чтобы увидеть оценку
-          </p>
         </div>
+
         <WheelChart
           data={wheelData}
           size="lg"
           selectedSphereId={activeSphere}
           onSphereSelect={setActiveSphere}
+          hideFooter
+          fullBleed
         />
-        <div className="space-y-4">
-          {spheres.map((sphere) => (
-            <Card
-              key={sphere.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setActiveSphere(sphere.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setActiveSphere(sphere.id);
-                }
-              }}
-              className={cn(
-                interactiveCard,
-                "cursor-pointer",
-                activeSphere === sphere.id && selectedRing
-              )}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="flex items-center gap-2">
+
+        <ActiveScoreDisplay
+          sphereName={activeSphereData?.name ?? null}
+          score={activeSphere ? (scores[activeSphere] ?? 5) : 0}
+        />
+
+        <div className="space-y-3">
+          <p className="editorial-section-label">Сферы</p>
+          {spheres.map((sphere) => {
+            const isActive = activeSphere === sphere.id;
+            return (
+              <div
+                key={sphere.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveSphere(sphere.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setActiveSphere(sphere.id);
+                  }
+                }}
+                className={cn(
+                  interactiveCard,
+                  "rounded-sm p-4",
+                  isActive && selectedAccentBar
+                )}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2.5 font-medium">
                     <span
-                      className="h-3 w-3 rounded-full"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: sphere.color }}
                     />
                     {sphere.name}
                   </span>
-                  <span className="text-teal-600">{scores[sphere.id]}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                  <span className="font-display text-lg tabular-nums">
+                    {scores[sphere.id]}
+                  </span>
+                </div>
                 <Slider
                   min={1}
                   max={10}
@@ -116,10 +135,11 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
                     setActiveSphere(sphere.id);
                   }}
                 />
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
+
         <Button className="w-full" size="lg" onClick={() => setStep(1)}>
           Далее
         </Button>
@@ -132,27 +152,35 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Приоритеты</h1>
-        <p className="mt-2 text-sm text-slate-500">
+    <div className="space-y-8">
+      <OnboardingStepIndicator step={1} total={2} label="Приоритеты" />
+
+      <div className="space-y-1">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
+          Фокус
+        </h1>
+        <p className="max-w-sm text-sm leading-relaxed text-[var(--muted)]">
           Выберите 1–2 сферы, на которых сфокусируетесь в первую очередь
         </p>
         {lowSpheres.length > 0 && (
-          <p className="mt-2 flex items-center justify-center gap-1 text-xs text-amber-600">
-            <AlertCircle className="h-3.5 w-3.5" />
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-[var(--destructive)]">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             Сферы с оценкой ≤{LOW_SCORE_THRESHOLD} — зона роста
           </p>
         )}
       </div>
-      <WheelChart
-        data={wheelData}
-        size="md"
-        selectedSphereId={activeSphere}
-        onSphereSelect={setActiveSphere}
-      />
-      <div className="space-y-2">
-        <Label>Приоритетные сферы</Label>
+
+      <div className="museum-frame bg-[var(--surface)] p-4">
+        <WheelChart
+          data={wheelData}
+          size="md"
+          selectedSphereId={activeSphere}
+          onSphereSelect={setActiveSphere}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Label className="editorial-section-label">Приоритетные сферы</Label>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {spheres.map((sphere) => {
             const score = scores[sphere.id] ?? 5;
@@ -165,34 +193,27 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
                 type="button"
                 onClick={() => togglePriority(sphere.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl border p-3 text-left text-sm",
+                  "flex items-center gap-2 rounded-sm border p-3 text-left text-sm transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
                   tapScale,
                   selected &&
-                    "border-teal-500 bg-teal-50 dark:bg-teal-950",
+                    "editorial-accent-bar border-[var(--accent)] bg-[var(--primary-soft)]",
                   !selected &&
                     isLow &&
-                    "border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40",
+                    "border-[var(--destructive)] bg-[color-mix(in_srgb,var(--destructive)_8%,var(--surface))]",
                   !selected &&
                     !isLow &&
-                    "border-slate-200 dark:border-slate-800"
+                    "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--foreground)]"
                 )}
               >
                 {isLow && (
-                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                  <AlertCircle className="h-4 w-4 shrink-0 text-[var(--destructive)]" />
                 )}
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: sphere.color }}
                 />
                 <span className="flex-1 font-medium">{sphere.name}</span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-                    isLow
-                      ? "bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                  )}
-                >
+                <span className="shrink-0 font-display text-sm tabular-nums text-[var(--muted)]">
                   {score}/10
                 </span>
               </button>
@@ -200,6 +221,7 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
           })}
         </div>
       </div>
+
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>
           Назад

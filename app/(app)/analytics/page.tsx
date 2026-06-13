@@ -2,13 +2,14 @@ import { AnalyticsCharts } from "@/components/analytics/AnalyticsCharts";
 import { PageHeader } from "@/components/ui/page-header";
 import { getCachedAnalyticsData } from "@/lib/data/queries";
 import { getSessionUser } from "@/lib/session";
-import { format, eachDayOfInterval, isSameDay } from "date-fns";
+import { format, eachDayOfInterval, isSameDay, startOfDay, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export default async function AnalyticsPage() {
   const user = await getSessionUser();
-  const { assessments, habits, weekAgo, today } =
-    await getCachedAnalyticsData(user.id);
+  const { assessments, habits } = await getCachedAnalyticsData(user.id);
+  const today = startOfDay(new Date());
+  const weekAgo = subDays(today, 6);
 
   const sphereNames = [
     ...new Set(

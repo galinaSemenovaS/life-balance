@@ -4,11 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 import { toggleHabitLog } from "@/actions/habits";
 import { toggleTask } from "@/actions/goals";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { CalendarCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sectionLabel } from "@/lib/ui-classes";
 
 type HabitItem = {
   id: string;
@@ -28,7 +28,29 @@ type TaskItem = {
   completed: boolean;
 };
 
-function TaskCard({
+function EditorialRow({
+  children,
+  completed,
+  className,
+}: {
+  children: React.ReactNode;
+  completed?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "interactive-surface flex items-start gap-3 border border-[var(--border)] bg-[var(--surface)] p-4",
+        completed && "opacity-70",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TaskRow({
   task,
   pending,
   onToggle,
@@ -38,32 +60,29 @@ function TaskCard({
   onToggle: (completed: boolean) => void;
 }) {
   return (
-    <Card
-      className={cn(
-        "flex items-center gap-3 py-3",
-        task.completed && "opacity-75"
-      )}
-    >
+    <EditorialRow completed={task.completed}>
       <Checkbox
         checked={task.completed}
         disabled={pending}
         onCheckedChange={(checked) => onToggle(checked === true)}
       />
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "font-medium",
-            task.completed && "text-slate-500 line-through"
+            "font-medium leading-snug",
+            task.completed && "text-[var(--muted)] line-through"
           )}
         >
           {task.title}
         </p>
-        <p className="text-xs text-slate-500">{task.goalTitle}</p>
+        <p className="mt-0.5 text-xs text-[var(--muted)]">{task.goalTitle}</p>
         {task.recurrenceLabel && task.recurrenceLabel !== "Не повторяется" ? (
-          <p className="text-xs text-slate-400">{task.recurrenceLabel}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)] opacity-80">
+            {task.recurrenceLabel}
+          </p>
         ) : null}
       </div>
-    </Card>
+    </EditorialRow>
   );
 }
 
@@ -106,31 +125,30 @@ export function TodayList({
     });
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-teal-300 dark:via-teal-300 dark:to-cyan-300">
-          Сегодня
-        </h1>
-        <p className="text-sm text-slate-500">
-          {new Date().toLocaleDateString("ru-RU", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          })}
-        </p>
-      </div>
+  const dateLabel = new Date().toLocaleDateString("ru-RU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 
-      <Card className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium">Прогресс дня</span>
-          <span className="text-sm font-semibold text-teal-600">{percent}%</span>
+  return (
+    <div className="space-y-8">
+      <header className="space-y-2">
+        <p className={sectionLabel}>{dateLabel}</p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Сегодня</h1>
+        <div className="h-px w-12 bg-[var(--accent)]" aria-hidden />
+      </header>
+
+      <div className="space-y-3 border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className={sectionLabel}>Прогресс дня</span>
+          <span className="font-display text-2xl tabular-nums">{percent}%</span>
         </div>
         <Progress value={percent} />
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[var(--muted)]">
           {completed} из {total} выполнено
         </p>
-      </Card>
+      </div>
 
       {isEmpty ? (
         <EmptyState
@@ -142,9 +160,9 @@ export function TodayList({
         <>
           {habits.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-slate-500">Привычки</h2>
+              <h2 className={sectionLabel}>Привычки</h2>
               {habits.map((habit) => (
-                <Card key={habit.id} className="flex items-center gap-3 py-3">
+                <EditorialRow key={habit.id} completed={habit.completed}>
                   <Checkbox
                     checked={habit.completed}
                     disabled={pending}
@@ -164,39 +182,43 @@ export function TodayList({
                       });
                     }}
                   />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <p
                       className={cn(
-                        "font-medium",
-                        habit.completed && "text-slate-500 line-through"
+                        "font-medium leading-snug",
+                        habit.completed && "text-[var(--muted)] line-through"
                       )}
                     >
                       {habit.title}
                     </p>
                     {habit.goalTitle && (
-                      <p className="text-xs text-slate-500">Цель: {habit.goalTitle}</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted)]">
+                        Цель: {habit.goalTitle}
+                      </p>
                     )}
                     {habit.recurrenceLabel &&
                     habit.recurrenceLabel !== "Не повторяется" ? (
-                      <p className="text-xs text-slate-400">{habit.recurrenceLabel}</p>
+                      <p className="mt-0.5 text-xs text-[var(--muted)] opacity-80">
+                        {habit.recurrenceLabel}
+                      </p>
                     ) : null}
                   </div>
                   {habit.color && (
                     <span
-                      className="h-2 w-2 rounded-full"
+                      className="mt-1 h-2 w-2 shrink-0 rounded-full"
                       style={{ backgroundColor: habit.color }}
                     />
                   )}
-                </Card>
+                </EditorialRow>
               ))}
             </section>
           )}
 
           {tasks.length > 0 && (
             <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-slate-500">Задачи</h2>
+              <h2 className={sectionLabel}>Задачи</h2>
               {pendingTasks.map((task) => (
-                <TaskCard
+                <TaskRow
                   key={task.id}
                   task={task}
                   pending={pending}
@@ -204,10 +226,10 @@ export function TodayList({
                 />
               ))}
               {completedTasks.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <p className="text-xs font-medium text-slate-400">Выполнено</p>
+                <div className="space-y-2 pt-3">
+                  <p className={sectionLabel}>Выполнено</p>
                   {completedTasks.map((task) => (
-                    <TaskCard
+                    <TaskRow
                       key={task.id}
                       task={task}
                       pending={pending}

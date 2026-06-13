@@ -1,19 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Playfair_Display } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { APP_DESCRIPTION, APP_NAME, APP_NAME_SHORT } from "@/lib/branding";
 import { resolveSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const displayFont = Playfair_Display({
+  variable: "--font-display",
   subsets: ["latin", "cyrillic"],
+  weight: ["500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const uiFont = IBM_Plex_Sans({
+  variable: "--font-ui",
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -36,7 +38,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#0d9488",
+  themeColor: "#d4a017",
 };
 
 export default function RootLayout({
@@ -46,7 +48,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${displayFont.variable} ${uiFont.variable} antialiased`}>
         <ThemeProvider>
           {children}
           <Toaster richColors position="top-center" />

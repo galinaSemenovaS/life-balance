@@ -1,3 +1,5 @@
+import { coerceDate } from "@/lib/utils";
+
 export type RecurrencePreset =
   | "none"
   | "daily"
@@ -112,8 +114,8 @@ export function ruleFromPreset(
   }
 }
 
-function startOfDay(d: Date) {
-  const x = new Date(d);
+function startOfDay(d: Date | string | number) {
+  const x = coerceDate(d);
   x.setHours(0, 0, 0, 0);
   return x;
 }
@@ -140,25 +142,28 @@ function isPastEnd(rule: RecurrenceRule, date: Date, startDate?: Date): boolean 
 
 export function isDueOnDate(
   rule: RecurrenceRule,
-  date: Date,
-  startDate?: Date
+  date: Date | string,
+  startDate?: Date | string
 ): boolean {
+  const dayDate = coerceDate(date);
+  const anchor = startDate != null ? coerceDate(startDate) : undefined;
+
   if (rule.preset === "none") {
-    if (!startDate) return true;
-    return startOfDay(date).getTime() === startOfDay(startDate).getTime();
+    if (!anchor) return true;
+    return startOfDay(dayDate).getTime() === startOfDay(anchor).getTime();
   }
 
-  if (startDate && startOfDay(date) < startOfDay(startDate)) return false;
-  if (isPastEnd(rule, date, startDate)) return false;
+  if (anchor && startOfDay(dayDate) < startOfDay(anchor)) return false;
+  if (isPastEnd(rule, dayDate, anchor)) return false;
 
-  const day = date.getDay();
+  const day = dayDate.getDay();
 
   switch (rule.preset) {
     case "daily":
-      if (!startDate) return true;
+      if (!anchor) return true;
       return (
         Math.floor(
-          (startOfDay(date).getTime() - startOfDay(startDate).getTime()) /
+          (startOfDay(dayDate).getTime() - startOfDay(anchor).getTime()) /
             86400000
         ) %
           rule.interval ===
@@ -167,18 +172,18 @@ export function isDueOnDate(
     case "weekly":
       return rule.daysOfWeek.includes(day);
     case "monthly":
-      if (!startDate) return date.getDate() === new Date().getDate();
-      return date.getDate() === startDate.getDate();
+      if (!anchor) return dayDate.getDate() === new Date().getDate();
+      return dayDate.getDate() === anchor.getDate();
     case "yearly":
-      if (!startDate) return false;
+      if (!anchor) return false;
       return (
-        date.getMonth() === startDate.getMonth() &&
-        date.getDate() === startDate.getDate()
+        dayDate.getMonth() === anchor.getMonth() &&
+        dayDate.getDate() === anchor.getDate()
       );
     case "custom": {
-      if (!startDate) return rule.unit === "day";
+      if (!anchor) return rule.unit === "day";
       const diffDays = Math.floor(
-        (startOfDay(date).getTime() - startOfDay(startDate).getTime()) / 86400000
+        (startOfDay(dayDate).getTime() - startOfDay(anchor).getTime()) / 86400000
       );
       if (diffDays < 0) return false;
       if (rule.unit === "day") return diffDays % rule.interval === 0;
@@ -190,11 +195,11 @@ export function isDueOnDate(
           ? rule.daysOfWeek.includes(day)
           : diffDays % (7 * rule.interval) === 0;
       }
-      if (rule.unit === "month") return date.getDate() === startDate.getDate();
+      if (rule.unit === "month") return dayDate.getDate() === anchor.getDate();
       if (rule.unit === "year") {
         return (
-          date.getMonth() === startDate.getMonth() &&
-          date.getDate() === startDate.getDate()
+          dayDate.getMonth() === anchor.getMonth() &&
+          dayDate.getDate() === anchor.getDate()
         );
       }
       return false;

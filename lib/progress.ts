@@ -1,5 +1,6 @@
 import { startOfDay, isSameDay } from "date-fns";
 import type { Habit, HabitLog, Task } from "@prisma/client";
+import { coerceDate } from "@/lib/utils";
 import {
   isDueOnDate,
   parseRecurrenceJson,
@@ -47,14 +48,15 @@ function habitRecurrence(habit: Pick<Habit, "frequency" | "schedule">): Recurren
 
 export function isHabitDueToday(
   habit: Pick<Habit, "frequency" | "schedule" | "endDate">,
-  date = new Date()
+  date: Date | string = new Date()
 ): boolean {
-  if (habit.endDate && startOfDay(date) > startOfDay(habit.endDate)) return false;
+  const day = coerceDate(date);
+  if (habit.endDate && startOfDay(day) > startOfDay(habit.endDate)) return false;
   const rule = habitRecurrence(habit);
   if (rule.endType === "onDate" && rule.endDate) {
-    if (startOfDay(date) > startOfDay(new Date(rule.endDate))) return false;
+    if (startOfDay(day) > startOfDay(new Date(rule.endDate))) return false;
   }
-  return isDueOnDate(rule, date);
+  return isDueOnDate(rule, day);
 }
 
 export function isTaskDueToday(
@@ -67,13 +69,14 @@ export function isTaskDueToday(
 /** Задачи на экране «Сегодня» — включая выполненные за сегодня */
 export function isTaskOnTodayList(
   task: Pick<Task, "dueDate" | "recurrence" | "status">,
-  date = new Date()
+  date: Date | string = new Date()
 ): boolean {
+  const day = coerceDate(date);
   const rule = parseRecurrenceJson(task.recurrence);
   if (rule.preset === "none") {
-    return task.dueDate ? isSameDay(task.dueDate, date) : false;
+    return task.dueDate ? isSameDay(task.dueDate, day) : false;
   }
-  return isDueOnDate(rule, date, task.dueDate ?? date);
+  return isDueOnDate(rule, day, task.dueDate ?? day);
 }
 
 type HabitForProgress = Pick<

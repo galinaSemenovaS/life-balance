@@ -11,7 +11,7 @@ export function Checkbox({
   return (
     <CheckboxPrimitive.Root
       className={cn(
-        "peer h-5 w-5 shrink-0 rounded-md border border-slate-300 ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 data-[state=checked]:border-teal-600 data-[state=checked]:bg-teal-600 data-[state=checked]:text-white dark:border-slate-600 dark:ring-offset-slate-950",
+        "peer h-5 w-5 shrink-0 rounded-sm border border-[var(--border)] bg-[var(--surface)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] data-[state=checked]:border-[var(--foreground)] data-[state=checked]:bg-[var(--foreground)] data-[state=checked]:text-[var(--background)]",
         className
       )}
       {...props}

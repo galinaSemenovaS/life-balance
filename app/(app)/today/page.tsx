@@ -3,10 +3,12 @@ import { isHabitDueToday, isTaskOnTodayList } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { TodayList } from "@/components/today/TodayList";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
+import { startOfDay } from "date-fns";
 
 export default async function TodayPage() {
   const user = await getSessionUser();
-  const { habits, tasks, today } = await getCachedTodayData(user.id);
+  const { habits, tasks } = await getCachedTodayData(user.id);
+  const today = startOfDay(new Date());
 
   const dueHabits = habits.filter((h) => isHabitDueToday(h, today));
   const dueTasks = tasks.filter((t) => isTaskOnTodayList(t, today));

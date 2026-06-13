@@ -10,7 +10,6 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { tapScale } from "@/lib/ui-classes";
 
 const items = [
   { href: "/today", label: "Сегодня", icon: CalendarCheck },
@@ -24,8 +23,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/40 bg-white/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/80">
-      <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--border)] bg-[var(--background)] pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-lg items-center justify-around px-1 py-1.5">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -33,15 +32,23 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex min-w-[56px] flex-col items-center gap-1 rounded-2xl px-2 py-1.5 text-[11px] font-medium transition-all",
-                tapScale,
+                "flex min-w-[56px] flex-col items-center gap-0.5 rounded-sm px-2 py-2 text-[10px] font-medium uppercase tracking-wide transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
                 active
-                  ? "bg-teal-100/90 text-teal-700 dark:bg-teal-950/80 dark:text-teal-300"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                  ? "text-[var(--foreground)]"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)]"
               )}
             >
-              <Icon className={cn("h-5 w-5", active && "stroke-[2.5]")} />
+              <Icon
+                className={cn(
+                  "h-5 w-5 transition-transform duration-300",
+                  active && "scale-105"
+                )}
+                strokeWidth={active ? 2.25 : 1.75}
+              />
               <span>{label}</span>
+              {active ? (
+                <span className="mt-0.5 h-0.5 w-4 bg-[var(--accent)]" aria-hidden />
+              ) : null}
             </Link>
           );
         })}

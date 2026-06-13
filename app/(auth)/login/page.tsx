@@ -34,12 +34,10 @@ export default async function LoginPage({
 
   return (
     <div className="app-shell-bg flex min-h-dvh items-center justify-center px-4">
-      <Card className="w-full max-w-sm border-0 shadow-2xl shadow-slate-900/5 dark:shadow-black/20">
+      <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <AppLogo size={80} className="mb-2 drop-shadow-lg" />
-          <CardTitle className="bg-gradient-to-r from-teal-700 to-teal-600 bg-clip-text text-transparent dark:from-teal-300 dark:to-teal-300">
-            {APP_TITLE_RU}
-          </CardTitle>
+          <AppLogo size={80} className="mb-4" />
+          <CardTitle className="font-display text-2xl">{APP_TITLE_RU}</CardTitle>
           <CardDescription>
             Оцени сферы жизни, ставь цели и отслеживай привычки каждый день
           </CardDescription>
@@ -48,7 +46,7 @@ export default async function LoginPage({
           {errorMessage ? (
             <p
               role="alert"
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+              className="border border-[var(--destructive)] bg-[color-mix(in_srgb,var(--destructive)_10%,var(--surface))] px-3 py-2 text-sm text-[var(--destructive)]"
             >
               {errorMessage}
             </p>

@@ -12,10 +12,10 @@ export function Slider({
       className={cn("relative flex w-full touch-none select-none items-center", className)}
       {...props}
     >
-      <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-        <SliderPrimitive.Range className="absolute h-full bg-teal-500" />
+      <SliderPrimitive.Track className="relative h-px w-full grow bg-[var(--border)]">
+        <SliderPrimitive.Range className="absolute h-px bg-[var(--foreground)]" />
       </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-teal-600 bg-white shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
+      <SliderPrimitive.Thumb className="block h-4 w-4 rounded-full border-2 border-[var(--foreground)] bg-[var(--surface)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] hover:scale-110" />
     </SliderPrimitive.Root>
   );
 }

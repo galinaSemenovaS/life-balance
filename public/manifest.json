@@ -4,8 +4,8 @@
   "description": "Goals, habits, and life balance",
   "start_url": "/today",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0d9488",
+  "background_color": "#f3efe6",
+  "theme_color": "#d4a017",
   "orientation": "portrait",
   "icons": [
     {

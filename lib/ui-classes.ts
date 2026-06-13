@@ -1,9 +1,10 @@
-/** Общие классы для тактильного отклика на мобильных */
+/** Тактильный отклик без «пружины» */
 export const tapScale =
-  "transition-transform duration-150 active:scale-[0.97] touch-manipulation";
+  "transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-[0.98] touch-manipulation";
 
 export const interactiveCard =
-  "transition-all duration-150 active:scale-[0.98] active:bg-slate-100 dark:active:bg-slate-800/80 touch-manipulation";
+  "interactive-surface cursor-pointer touch-manipulation border border-[var(--border)] bg-[var(--surface)]";
 
-export const selectedRing =
-  "ring-2 ring-teal-500 ring-offset-2 ring-offset-background dark:ring-offset-slate-900";
+export const selectedAccentBar = "editorial-accent-bar bg-[var(--primary-soft)]";
+
+export const sectionLabel = "editorial-section-label";

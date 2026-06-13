@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { endOfDay, startOfDay, subDays } from "date-fns";
+import { startOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS, userTag } from "@/lib/cache-tags";
 import { getGoalProgress } from "@/lib/progress";
@@ -135,7 +135,7 @@ async function fetchTodayData(userId: string) {
     }),
   ]);
 
-  return { habits, tasks, today };
+  return { habits, tasks };
 }
 
 export function getCachedTodayData(userId: string) {
@@ -191,7 +191,7 @@ async function fetchDashboardData(userId: string) {
     }),
   ]);
 
-  return { scores, goals, habits, todayTasks, today };
+  return { scores, goals, habits, todayTasks };
 }
 
 export function getCachedDashboardData(userId: string) {
@@ -233,7 +233,7 @@ async function fetchAnalyticsData(userId: string) {
     }),
   ]);
 
-  return { assessments: assessments.reverse(), habits, weekAgo, today };
+  return { assessments: assessments.reverse(), habits };
 }
 
 export function getCachedAnalyticsData(userId: string) {

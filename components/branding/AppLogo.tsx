@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils";
 
 const SEGMENTS = [
-  "#0d9488",
-  "#14b8a6",
-  "#2dd4bf",
-  "#5eead4",
-  "#0f766e",
-  "#115e59",
-  "#134e4a",
-  "#0f766e",
+  "#6B7F5E",
+  "#4A6670",
+  "#8A7B4A",
+  "#9E6B6B",
+  "#A67C52",
+  "#7A6B8E",
+  "#5C7A72",
+  "#6E6860",
 ];
 
 type AppLogoProps = {

@@ -4,19 +4,19 @@ import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday, isT
 import { getSessionUser } from "@/lib/session";
 import { WheelChart } from "@/components/wheel/WheelChart";
 import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { interactiveCard } from "@/lib/ui-classes";
+import { interactiveCard, sectionLabel } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Target, Flame } from "lucide-react";
-import { isSameDay } from "date-fns";
+import { isSameDay, startOfDay } from "date-fns";
 
 export default async function DashboardPage() {
   const user = await getSessionUser();
-  const { scores, goals, habits, todayTasks, today } =
+  const { scores, goals, habits, todayTasks } =
     await getCachedDashboardData(user.id);
+  const today = startOfDay(new Date());
 
   const wheelData = scores.map((s) => ({
     name: s.name.length > 12 ? `${s.name.slice(0, 11)}…` : s.name,
@@ -39,16 +39,14 @@ export default async function DashboardPage() {
   const priorities = scores.filter((s) => s.isPriority);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader title="Дашборд" subtitle="Обзор баланса и прогресса" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Колесо баланса</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <section className="space-y-3">
+        <h2 className={sectionLabel}>Колесо баланса</h2>
+        <div className="museum-frame bg-[var(--surface)] p-4">
           {wheelData.length > 0 ? (
-            <WheelChart data={wheelData} size="md" />
+            <WheelChart data={wheelData} size="md" hideFooter />
           ) : (
             <EmptyState
               icon={Target}
@@ -56,34 +54,39 @@ export default async function DashboardPage() {
               description="Пройдите оценку сфер в онбординге"
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card className="space-y-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Прогресс дня</CardTitle>
-          <span className="text-sm font-semibold text-teal-600">
+      <div className="space-y-3 border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className={sectionLabel}>Прогресс дня</span>
+          <span className="font-display text-2xl tabular-nums">
             {dayProgress.percent}%
           </span>
         </div>
         <Progress value={dayProgress.percent} />
-      </Card>
+      </div>
 
       {priorities.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-500">Приоритетные сферы</h2>
+          <h2 className={sectionLabel}>Приоритетные сферы</h2>
           {priorities.map((s) => (
-            <Link key={s.sphereId} href={`/spheres/${s.sphereId}`} className="block rounded-2xl">
-              <Card className={cn("flex items-center justify-between py-3", interactiveCard)}>
-                <div className="flex items-center gap-2">
+            <Link key={s.sphereId} href={`/spheres/${s.sphereId}`} className="block">
+              <div
+                className={cn(
+                  interactiveCard,
+                  "flex items-center justify-between rounded-sm p-4"
+                )}
+              >
+                <div className="flex items-center gap-2.5">
                   <span
-                    className="h-3 w-3 rounded-full"
+                    className="h-2.5 w-2.5 rounded-full"
                     style={{ backgroundColor: s.color }}
                   />
                   <span className="font-medium">{s.name}</span>
                 </div>
-                <span className="text-teal-600">{s.score}/10</span>
-              </Card>
+                <span className="font-display tabular-nums">{s.score}/10</span>
+              </div>
             </Link>
           ))}
         </section>
@@ -91,7 +94,7 @@ export default async function DashboardPage() {
 
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-500">Активные цели</h2>
+          <h2 className={sectionLabel}>Активные цели</h2>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/spheres">Все сферы</Link>
           </Button>
@@ -106,15 +109,17 @@ export default async function DashboardPage() {
           goals.map((goal) => {
             const progress = getGoalProgress(goal.tasks);
             return (
-              <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-2xl">
-                <Card className={cn("space-y-2 py-3", interactiveCard)}>
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">{goal.title}</p>
-                    <span className="text-xs text-slate-500">{goal.sphere.name}</span>
+              <Link key={goal.id} href={`/goals/${goal.id}`} className="block">
+                <div className={cn(interactiveCard, "space-y-3 rounded-sm p-4")}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium leading-snug">{goal.title}</p>
+                    <span className="shrink-0 text-xs text-[var(--muted)]">
+                      {goal.sphere.name}
+                    </span>
                   </div>
-                  <Progress value={progress} indicatorClassName="bg-blue-500" />
-                  <p className="text-xs text-slate-500">{progress}% выполнено</p>
-                </Card>
+                  <Progress value={progress} />
+                  <p className="text-xs text-[var(--muted)]">{progress}% выполнено</p>
+                </div>
               </Link>
             );
           })
@@ -122,7 +127,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-500">Streak привычек</h2>
+        <h2 className={sectionLabel}>Streak привычек</h2>
         {habits.length === 0 ? (
           <EmptyState
             icon={Flame}
@@ -131,12 +136,15 @@ export default async function DashboardPage() {
           />
         ) : (
           habits.map((habit) => (
-            <Card key={habit.id} className="flex items-center justify-between py-3">
+            <div
+              key={habit.id}
+              className="flex items-center justify-between border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
               <span>{habit.title}</span>
-              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+              <span className="border border-[var(--border)] px-2 py-0.5 text-xs font-medium tabular-nums">
                 {getHabitStreak(habit.logs)} дн.
               </span>
-            </Card>
+            </div>
           ))
         )}
       </section>
