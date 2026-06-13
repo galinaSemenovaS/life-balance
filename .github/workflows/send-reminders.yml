@@ -1,0 +1,24 @@
+name: Send push reminders
+
+on:
+  schedule:
+    # GitHub Actions: минимум ~5 минут между запусками
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call reminders API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$APP_URL" ]; then
+            echo "Add CRON_SECRET and APP_URL to GitHub repository secrets"
+            exit 1
+          fi
+          curl -fsS -X GET \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL%/}/api/cron/send-reminders"

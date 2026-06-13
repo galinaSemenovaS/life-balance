@@ -154,6 +154,7 @@ model Task {
   recurrence      Json?
   reminderTime    String?
   reminderEnabled Boolean          @default(false)
+  lastReminderAt  DateTime?
   status          TaskStatus       @default(PENDING)
   goal       Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
   planStep   PlanStep?        @relation(fields: [planStepId], references: [id], onDelete: SetNull)
@@ -179,6 +180,7 @@ model Habit {
   schedule     Json?
   reminderTime    String?
   reminderEnabled Boolean        @default(false)
+  lastReminderAt  DateTime?
   endDate         DateTime?
   isActive        Boolean        @default(true)
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -217,6 +219,7 @@ model NotificationPreference {
   timezone           String  @default("Europe/Moscow")
   wheelReviewDay     Int     @default(0)
   wheelReviewTime    String  @default("10:00")
+  lastWheelReminderAt DateTime?
   habitsEnabled      Boolean @default(true)
   wheelReviewEnabled Boolean @default(true)
   user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)

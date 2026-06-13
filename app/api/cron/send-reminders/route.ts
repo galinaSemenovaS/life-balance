@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushNotification } from "@/lib/push";
-import { DEFAULT_TIMEZONE, getLocalDay, getLocalHHmm } from "@/lib/timezone";
+import {
+  DEFAULT_TIMEZONE,
+  isReminderInWindow,
+  isWheelReviewDue,
+  wasReminderSentRecently,
+} from "@/lib/reminders";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -34,8 +39,11 @@ export async function GET(req: Request) {
     if (habit.user.pushSubscriptions.length === 0) continue;
 
     const tz = habit.user.notificationPreference?.timezone ?? DEFAULT_TIMEZONE;
-    if (getLocalHHmm(now, tz) !== habit.reminderTime) continue;
+    if (!habit.reminderTime) continue;
+    if (!isReminderInWindow(habit.reminderTime, now, tz)) continue;
+    if (wasReminderSentRecently(habit.lastReminderAt, now)) continue;
 
+    let sent = false;
     for (const sub of habit.user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
@@ -43,10 +51,18 @@ export async function GET(req: Request) {
           body: habit.title,
           url: "/today",
         });
+        sent = true;
         habitsSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
+    }
+
+    if (sent) {
+      await prisma.habit.update({
+        where: { id: habit.id },
+        data: { lastReminderAt: now },
+      });
     }
   }
 
@@ -75,8 +91,11 @@ export async function GET(req: Request) {
     if (user.pushSubscriptions.length === 0) continue;
 
     const tz = user.notificationPreference?.timezone ?? DEFAULT_TIMEZONE;
-    if (getLocalHHmm(now, tz) !== task.reminderTime) continue;
+    if (!task.reminderTime) continue;
+    if (!isReminderInWindow(task.reminderTime, now, tz)) continue;
+    if (wasReminderSentRecently(task.lastReminderAt, now)) continue;
 
+    let sent = false;
     for (const sub of user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
@@ -84,10 +103,18 @@ export async function GET(req: Request) {
           body: task.title,
           url: "/today",
         });
+        sent = true;
         tasksSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
+    }
+
+    if (sent) {
+      await prisma.task.update({
+        where: { id: task.id },
+        data: { lastReminderAt: now },
+      });
     }
   }
 
@@ -102,9 +129,9 @@ export async function GET(req: Request) {
     if (pref.user.pushSubscriptions.length === 0) continue;
 
     const tz = pref.timezone ?? DEFAULT_TIMEZONE;
-    if (getLocalDay(now, tz) !== pref.wheelReviewDay) continue;
-    if (getLocalHHmm(now, tz) !== pref.wheelReviewTime) continue;
+    if (!isWheelReviewDue(pref, now, tz)) continue;
 
+    let sent = false;
     for (const sub of pref.user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
@@ -112,10 +139,18 @@ export async function GET(req: Request) {
           body: "Уделите 5 минут оценке сфер жизни",
           url: "/spheres",
         });
+        sent = true;
         wheelSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
+    }
+
+    if (sent) {
+      await prisma.notificationPreference.update({
+        where: { id: pref.id },
+        data: { lastWheelReminderAt: now },
+      });
     }
   }
 
