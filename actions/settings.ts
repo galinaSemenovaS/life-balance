@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { unstable_update } from "@/lib/auth";
 import { revalidateUserData } from "@/lib/cache-tags";
@@ -60,5 +59,4 @@ export async function resetLifeBalance() {
 
   await unstable_update({ user: { onboarded: false } });
   revalidateUserData(user.id);
-  redirect("/onboarding");
 }

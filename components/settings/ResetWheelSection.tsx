@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { resetLifeBalance } from "@/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export function ResetWheelSection() {
+  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -20,6 +22,9 @@ export function ResetWheelSection() {
     startTransition(async () => {
       try {
         await resetLifeBalance();
+        toast.success("Колесо сброшено");
+        router.push("/onboarding");
+        router.refresh();
       } catch {
         toast.error("Не удалось сбросить данные");
         setConfirming(false);
