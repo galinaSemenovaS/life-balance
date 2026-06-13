@@ -2,17 +2,23 @@ import { getCachedSpheresPageData } from "@/lib/data/queries";
 import { getSessionUser } from "@/lib/session";
 import { SphereCard } from "@/components/spheres/SphereCard";
 import { ReassessForm } from "@/components/spheres/ReassessForm";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default async function SpheresPage() {
   const user = await getSessionUser();
   const { spheres, reassessSpheres } = await getCachedSpheresPageData(user.id);
+  const priorityCount = spheres.filter((s) => s.isPriority).length;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Сферы жизни</h1>
-        <p className="text-sm text-slate-500">8 областей вашего баланса</p>
-      </div>
+      <PageHeader
+        title="Сферы жизни"
+        subtitle={
+          priorityCount > 0
+            ? `${priorityCount} приоритетных · 8 областей баланса`
+            : "8 областей вашего баланса"
+        }
+      />
 
       <div className="space-y-3">
         {spheres.map((sphere) => (

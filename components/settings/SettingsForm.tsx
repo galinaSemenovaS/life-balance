@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { updateNotificationPreferences } from "@/actions/settings";
 import { renameSphere } from "@/actions/spheres";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ResetWheelSection } from "@/components/settings/ResetWheelSection";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,14 @@ export function SettingsForm({
 
   return (
     <div className="space-y-6">
+      <Card className="space-y-3">
+        <h3 className="font-semibold">Тема</h3>
+        <p className="text-xs text-slate-500">Выберите светлую, тёмную или системную</p>
+        <ThemeToggle />
+      </Card>
+
+      <ResetWheelSection />
+
       <Card className="space-y-4">
         <h3 className="font-semibold">Уведомления</h3>
         <div className="flex items-center justify-between">

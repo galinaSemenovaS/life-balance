@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { interactiveCard, selectedRing, tapScale } from "@/lib/ui-classes";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,8 +78,19 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
           {spheres.map((sphere) => (
             <Card
               key={sphere.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveSphere(sphere.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setActiveSphere(sphere.id);
+                }
+              }}
               className={cn(
-                activeSphere === sphere.id && "ring-2 ring-emerald-500"
+                interactiveCard,
+                "cursor-pointer",
+                activeSphere === sphere.id && selectedRing
               )}
             >
               <CardHeader className="pb-2">
@@ -153,7 +165,8 @@ export function OnboardingForm({ spheres }: { spheres: Sphere[] }) {
                 type="button"
                 onClick={() => togglePriority(sphere.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-xl border p-3 text-left text-sm transition-colors",
+                  "flex items-center gap-2 rounded-xl border p-3 text-left text-sm",
+                  tapScale,
                   selected &&
                     "border-emerald-500 bg-emerald-50 dark:bg-emerald-950",
                   !selected &&

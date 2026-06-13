@@ -7,19 +7,24 @@ import { requireUser } from "@/lib/session";
 
 export async function createHabit(data: {
   title: string;
-  sphereId?: string;
-  goalId?: string;
+  goalId: string;
   reminderTime?: string;
   frequency?: "DAILY" | "WEEKLY";
 }) {
   const user = await requireUser();
 
+  const goal = await prisma.goal.findFirst({
+    where: { id: data.goalId, userId: user.id },
+    select: { id: true, sphereId: true },
+  });
+  if (!goal) throw new Error("Цель не найдена");
+
   const habit = await prisma.habit.create({
     data: {
       userId: user.id,
       title: data.title,
-      sphereId: data.sphereId,
-      goalId: data.goalId,
+      sphereId: goal.sphereId,
+      goalId: goal.id,
       reminderTime: data.reminderTime,
       frequency: data.frequency ?? "DAILY",
     },

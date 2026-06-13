@@ -3,9 +3,14 @@ import { getCachedDashboardData } from "@/lib/data/queries";
 import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { WheelChart } from "@/components/wheel/WheelChart";
+import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { interactiveCard } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
+import { Target, Flame } from "lucide-react";
 import { isSameDay } from "date-fns";
 
 export default async function DashboardPage() {
@@ -34,10 +39,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Дашборд</h1>
-        <p className="text-sm text-slate-500">Обзор баланса и прогресса</p>
-      </div>
+      <PageHeader title="Дашборд" subtitle="Обзор баланса и прогресса" />
 
       <Card>
         <CardHeader>
@@ -47,7 +49,11 @@ export default async function DashboardPage() {
           {wheelData.length > 0 ? (
             <WheelChart data={wheelData} size="md" />
           ) : (
-            <p className="text-sm text-slate-500">Пройдите оценку сфер в онбординге</p>
+            <EmptyState
+              icon={Target}
+              title="Колесо пустое"
+              description="Пройдите оценку сфер в онбординге"
+            />
           )}
         </CardContent>
       </Card>
@@ -66,8 +72,8 @@ export default async function DashboardPage() {
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-500">Приоритетные сферы</h2>
           {priorities.map((s) => (
-            <Link key={s.sphereId} href={`/spheres/${s.sphereId}`}>
-              <Card className="flex items-center justify-between py-3">
+            <Link key={s.sphereId} href={`/spheres/${s.sphereId}`} className="block rounded-2xl">
+              <Card className={cn("flex items-center justify-between py-3", interactiveCard)}>
                 <div className="flex items-center gap-2">
                   <span
                     className="h-3 w-3 rounded-full"
@@ -90,15 +96,17 @@ export default async function DashboardPage() {
           </Button>
         </div>
         {goals.length === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-500">Пока нет активных целей</p>
-          </Card>
+          <EmptyState
+            icon={Target}
+            title="Пока нет активных целей"
+            description="Создайте цель в любой сфере"
+          />
         ) : (
           goals.map((goal) => {
             const progress = getGoalProgress(goal.tasks);
             return (
-              <Link key={goal.id} href={`/goals/${goal.id}`}>
-                <Card className="space-y-2 py-3">
+              <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-2xl">
+                <Card className={cn("space-y-2 py-3", interactiveCard)}>
                   <div className="flex items-center justify-between">
                     <p className="font-medium">{goal.title}</p>
                     <span className="text-xs text-slate-500">{goal.sphere.name}</span>
@@ -115,9 +123,11 @@ export default async function DashboardPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-slate-500">Streak привычек</h2>
         {habits.length === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-500">Добавьте первую привычку</p>
-          </Card>
+          <EmptyState
+            icon={Flame}
+            title="Нет привычек"
+            description="Добавьте привычку внутри цели"
+          />
         ) : (
           habits.map((habit) => (
             <Card key={habit.id} className="flex items-center justify-between py-3">

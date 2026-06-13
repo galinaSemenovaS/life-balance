@@ -157,7 +157,17 @@ export function GoalDetail({
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-semibold">Привычки</h2>
+        <div>
+          <h2 className="font-semibold">Привычки</h2>
+          <p className="text-xs text-slate-500">
+            Регулярные действия, которые поддерживают эту цель
+          </p>
+        </div>
+        {habits.length === 0 && (
+          <Card className="py-3 text-sm text-slate-500">
+            Пока нет привычек — добавьте первую ниже
+          </Card>
+        )}
         {habits.map((habit) => (
           <Card key={habit.id} className="py-3 text-sm">
             {habit.title}
@@ -166,7 +176,7 @@ export function GoalDetail({
             )}
           </Card>
         ))}
-        <CreateHabitForm sphereId={sphereId} goalId={goal.id} />
+        <CreateHabitForm goalId={goal.id} />
       </section>
     </div>
   );

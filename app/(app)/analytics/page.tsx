@@ -1,4 +1,5 @@
 import { AnalyticsCharts } from "@/components/analytics/AnalyticsCharts";
+import { PageHeader } from "@/components/ui/page-header";
 import { getCachedAnalyticsData } from "@/lib/data/queries";
 import { getSessionUser } from "@/lib/session";
 import { format, eachDayOfInterval, isSameDay } from "date-fns";
@@ -41,10 +42,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Аналитика</h1>
-        <p className="text-sm text-slate-500">Динамика баланса и привычек</p>
-      </div>
+      <PageHeader title="Аналитика" subtitle="Динамика баланса и привычек" />
       <AnalyticsCharts
         scoreHistory={scoreHistory}
         sphereNames={sphereNames}

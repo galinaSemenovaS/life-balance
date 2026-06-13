@@ -1,7 +1,7 @@
 {
-  "name": "Колесо баланса",
-  "short_name": "Баланс",
-  "description": "Цели, привычки и баланс жизни",
+  "name": "Life Balance",
+  "short_name": "Balance",
+  "description": "Goals, habits, and life balance",
   "start_url": "/today",
   "display": "standalone",
   "background_color": "#f8fafc",

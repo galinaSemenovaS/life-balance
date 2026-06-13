@@ -1,7 +1,7 @@
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let data = { title: "Колесо баланса", body: "", url: "/today" };
+  let data = { title: "Life Balance", body: "", url: "/today" };
   try {
     data = { ...data, ...event.data.json() };
   } catch {

@@ -15,6 +15,7 @@ export default async function TodayPage() {
         id: h.id,
         title: h.title,
         sphereName: h.sphere?.name,
+        goalTitle: h.goal?.title,
         color: h.sphere?.color,
         completed: h.logs.some((l) => l.completed),
       }))}

@@ -1,5 +1,6 @@
 import { getCachedSettingsData } from "@/lib/data/queries";
 import { SettingsForm } from "@/components/settings/SettingsForm";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { signOut } from "@/lib/auth";
@@ -11,10 +12,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Настройки</h1>
-        <p className="text-sm text-slate-500">{user.email}</p>
-      </div>
+      <PageHeader title="Настройки" subtitle={user.email ?? undefined} />
 
       <Card className="space-y-2">
         <p className="text-sm font-medium">Профиль</p>

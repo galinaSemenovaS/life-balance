@@ -73,7 +73,7 @@ export function WheelChart({
             outerRadius={dimension * 0.36}
             data={chartData}
           >
-            <PolarGrid stroke="#e2e8f0" gridType="polygon" />
+            <PolarGrid stroke="#e2e8f0" className="dark:stroke-slate-700" gridType="polygon" />
             <PolarAngleAxis
               dataKey="name"
               tick={{ fill: "#64748b", fontSize: 10 }}
@@ -108,17 +108,35 @@ export function WheelChart({
                     <circle
                       cx={cx}
                       cy={cy}
-                      r={isActive ? 8 : 5}
+                      r={22}
+                      fill="transparent"
+                    />
+                    {isActive && (
+                      <circle
+                        cx={cx}
+                        cy={cy}
+                        r={14}
+                        fill={point.color}
+                        fillOpacity={0.2}
+                        className="sphere-dot-active"
+                      />
+                    )}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={isActive ? 9 : 6}
                       fill={point.color}
                       stroke="#fff"
                       strokeWidth={2}
+                      className={cn(isActive && "sphere-dot-active")}
                     />
                     {isActive && (
                       <text
                         x={cx}
-                        y={cy - 16}
+                        y={cy - 18}
                         textAnchor="middle"
-                        fill="#0f172a"
+                        fill="currentColor"
+                        className="fill-slate-900 dark:fill-slate-100"
                         fontSize={14}
                         fontWeight={700}
                       >

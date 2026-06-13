@@ -13,6 +13,7 @@ type HabitItem = {
   id: string;
   title: string;
   sphereName?: string;
+  goalTitle?: string;
   color?: string;
   completed: boolean;
 };
@@ -51,7 +52,9 @@ export function TodayList({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Сегодня</h1>
+        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-700 via-teal-600 to-cyan-600 bg-clip-text text-transparent dark:from-emerald-300 dark:via-teal-300 dark:to-cyan-300">
+          Сегодня
+        </h1>
         <p className="text-sm text-slate-500">
           {new Date().toLocaleDateString("ru-RU", {
             weekday: "long",
@@ -76,7 +79,7 @@ export function TodayList({
         <EmptyState
           icon={CalendarCheck}
           title="На сегодня пусто"
-          description="Добавьте привычки или задачи с дедлайном на сегодня"
+          description="Создайте цель и добавьте к ней привычки — они появятся здесь"
         />
       ) : (
         <>
@@ -106,7 +109,10 @@ export function TodayList({
                   />
                   <div className="flex-1">
                     <p className="font-medium">{habit.title}</p>
-                    {habit.sphereName && (
+                    {habit.goalTitle && (
+                      <p className="text-xs text-slate-500">Цель: {habit.goalTitle}</p>
+                    )}
+                    {!habit.goalTitle && habit.sphereName && (
                       <p className="text-xs text-slate-500">{habit.sphereName}</p>
                     )}
                   </div>

@@ -51,7 +51,7 @@ async function fetchSpheresPageData(userId: string) {
   const [spheres, scores] = await Promise.all([
     prisma.sphere.findMany({
       where: { userId },
-      orderBy: { sortOrder: "asc" },
+      orderBy: [{ isPriority: "desc" }, { sortOrder: "asc" }],
       select: {
         id: true,
         name: true,
@@ -113,6 +113,7 @@ async function fetchTodayData(userId: string) {
         schedule: true,
         isActive: true,
         sphere: { select: { name: true, color: true } },
+        goal: { select: { title: true } },
         logs: {
           where: { date: today },
           select: { completed: true, date: true },

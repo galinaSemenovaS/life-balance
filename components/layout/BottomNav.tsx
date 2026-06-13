@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CalendarCheck, CircleDot, LayoutDashboard, Settings } from "lucide-react";
+import {
+  BarChart3,
+  CalendarCheck,
+  CircleDot,
+  LayoutDashboard,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tapScale } from "@/lib/ui-classes";
 
 const items = [
   { href: "/today", label: "Сегодня", icon: CalendarCheck },
@@ -17,7 +24,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/40 bg-white/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/80">
       <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
         {items.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -26,9 +33,10 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex min-w-[56px] flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-colors",
+                "flex min-w-[56px] flex-col items-center gap-1 rounded-2xl px-2 py-1.5 text-[11px] font-medium transition-all",
+                tapScale,
                 active
-                  ? "text-emerald-600"
+                  ? "bg-emerald-100/90 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
               )}
             >

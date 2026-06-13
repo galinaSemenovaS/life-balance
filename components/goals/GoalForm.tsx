@@ -32,6 +32,9 @@ export function CreateGoalForm({ sphereId }: { sphereId: string }) {
       }}
     >
       <h3 className="font-semibold">Новая цель</h3>
+      <p className="text-xs text-slate-500">
+        Привычки добавляются внутри цели — так они поддерживают конкретный результат
+      </p>
       <div className="space-y-2">
         <Label htmlFor="title">Название</Label>
         <Input id="title" name="title" required placeholder="Например: Бегать 3 раза в неделю" />
@@ -51,13 +54,7 @@ export function CreateGoalForm({ sphereId }: { sphereId: string }) {
   );
 }
 
-export function CreateHabitForm({
-  sphereId,
-  goalId,
-}: {
-  sphereId?: string;
-  goalId?: string;
-}) {
+export function CreateHabitForm({ goalId }: { goalId: string }) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -68,7 +65,6 @@ export function CreateHabitForm({
           try {
             await createHabit({
               title: formData.get("title") as string,
-              sphereId,
               goalId,
               reminderTime: (formData.get("reminderTime") as string) || undefined,
             });
@@ -80,6 +76,9 @@ export function CreateHabitForm({
       }}
     >
       <h3 className="font-semibold">Новая привычка</h3>
+      <p className="text-xs text-slate-500">
+        Ежедневное действие, которое приближает к этой цели
+      </p>
       <div className="space-y-2">
         <Label htmlFor="habit-title">Название</Label>
         <Input id="habit-title" name="title" required placeholder="Например: 10 минут медитации" />
