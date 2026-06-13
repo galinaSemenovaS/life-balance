@@ -36,7 +36,7 @@ pnpm dev
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | Web Push (`npx web-push generate-vapid-keys`) |
 | `CRON_SECRET` | Защита `/api/cron/send-reminders` |
-| `CRON_WINDOW_MINUTES` | Окно совпадения времени (по умолчанию `5`) |
+| `CRON_WINDOW_MINUTES` | `1` — точность до минуты (по умолчанию) |
 
 ## Экраны
 
@@ -50,7 +50,7 @@ pnpm dev
 
 - Добавьте приложение на домашний экран (обязательно для push на iOS).
 - **Настройки** → «Включить push», затем push у каждой задачи/привычки.
-- Cron через **GitHub Actions** (каждые 5 мин) — см. раздел «Push-напоминания и Cron».
+- Cron через **[cron-job.org](https://cron-job.org)** (каждую минуту) — см. раздел ниже.
 
 ## Производительность
 
@@ -121,6 +121,7 @@ pnpm dlx vercel --prod
 | `VAPID_PRIVATE_KEY` | из `web-push generate-vapid-keys` |
 | `VAPID_SUBJECT` | `mailto:ваш@email.com` |
 | `CRON_SECRET` | случайная строка |
+| `CRON_WINDOW_MINUTES` | `1` |
 
 `DIRECT_URL` на Vercel **не нужен** (только для локального `db:push`).
 
@@ -141,42 +142,62 @@ pnpm dlx vercel --prod
 1. Откройте https://life-balance-murex.vercel.app
 2. Войдите через Google
 3. Добавьте PWA на домашний экран (для push на iOS)
-4. Настройте GitHub Secrets для cron — см. ниже
+4. Настройте **cron-job.org** — см. ниже
 
 ## Push-напоминания и Cron
 
-Vercel **Hobby** не поддерживает частый cron. Напоминания запускает **GitHub Actions** (`.github/workflows/send-reminders.yml`) — бесплатно.
+Vercel Hobby не умеет частый cron. Используйте **cron-job.org** (бесплатно, **каждую минуту**).
 
-### GitHub Secrets (обязательно)
+### 1. Vercel env
 
-GitHub → репозиторий → **Settings → Secrets and variables → Actions**:
+Добавьте на Vercel (если ещё нет):
 
-| Secret | Значение |
+| Переменная | Значение |
 |---|---|
-| `CRON_SECRET` | тот же, что на Vercel |
-| `APP_URL` | `https://life-balance-murex.vercel.app` |
+| `CRON_WINDOW_MINUTES` | `1` |
 
-Workflow — **каждые 5 минут**. Push придёт в течение 5 минут после указанного времени.
+Остальное — `CRON_SECRET`, VAPID-ключи (см. таблицу выше).
 
-Ручная проверка: **Actions → Send push reminders → Run workflow**.
+### 2. cron-job.org (обязательно)
 
-### Чеклист push
+1. Регистрация: [cron-job.org](https://cron-job.org/en/signup/)
+2. **Cronjobs → Create cronjob**
+3. Заполните:
 
-1. Vercel env: `CRON_SECRET`, VAPID-ключи, `VAPID_SUBJECT`
-2. GitHub Secrets: `CRON_SECRET`, `APP_URL`
-3. **Настройки → Включить push**
-4. У задачи/привычки: **Push-напоминание** + время
-5. iOS: PWA на экран «Домой»
+| Поле | Значение |
+|---|---|
+| Title | Life Balance reminders |
+| URL | `https://life-balance-murex.vercel.app/api/cron/send-reminders` |
+| Schedule | Every 1 minute |
+| Request method | GET |
 
-### Точнее (опционально): cron-job.org
+4. **Advanced → Headers** → добавьте:
 
-Бесплатно, **каждую минуту** → тот же URL и header. На Vercel: `CRON_WINDOW_MINUTES=1`.
+```
+Authorization: Bearer ВАШ_CRON_SECRET
+```
 
-### Другие бесплатные способы
+(`CRON_SECRET` — тот же, что на Vercel)
 
-| Способ | Плюсы | Минусы |
+5. **Create cronjob** → включите job (Enabled)
+
+Проверка: **History** у job — статус 200, ответ `{"ok":true,...}`.
+
+### 3. В приложении
+
+1. **Настройки → Включить push**
+2. У задачи/привычки: **Push-напоминание** + время (локальное)
+3. iOS: PWA на экран «Домой»
+
+### Ручная проверка (опционально)
+
+GitHub → **Actions → Send push reminders (manual test) → Run workflow**  
+(Secrets `CRON_SECRET` + `APP_URL` — только для теста)
+
+### Альтернативы
+
+| Способ | Точность | Цена |
 |---|---|---|
-| **Web Push + cron** (сейчас) | Бесплатно | iOS только через PWA |
-| **Telegram-бот** | Надёжно | Нужна привязка |
-| **Email** | Везде | Не push |
-| **Vercel Pro** | Cron в Vercel | Платно |
+| **cron-job.org** | 1 мин | Бесплатно |
+| **Vercel Pro** | 1 мин | Платно |
+| **Telegram-бот** | Мгновенно | Бесплатно, нужна интеграция |

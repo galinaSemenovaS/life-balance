@@ -1,9 +1,9 @@
 import { DEFAULT_TIMEZONE, getLocalDay, getLocalHHmm } from "@/lib/timezone";
 
-/** Окно для внешнего cron (GitHub Actions = 5 мин, cron-job.org = 1 мин) */
+/** Окно совпадения времени (1 = точность до минуты при cron каждую минуту) */
 export function getReminderWindowMinutes(): number {
-  const value = Number(process.env.CRON_WINDOW_MINUTES ?? 5);
-  return Number.isFinite(value) && value >= 1 ? Math.min(value, 60) : 5;
+  const value = Number(process.env.CRON_WINDOW_MINUTES ?? 1);
+  return Number.isFinite(value) && value >= 1 ? Math.min(value, 60) : 1;
 }
 
 export function isReminderInWindow(

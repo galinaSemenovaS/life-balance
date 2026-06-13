@@ -1,9 +1,6 @@
-name: Send push reminders
+name: Send push reminders (manual test)
 
 on:
-  schedule:
-    # GitHub Actions: минимум ~5 минут между запусками
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
