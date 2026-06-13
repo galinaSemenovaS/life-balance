@@ -10,6 +10,7 @@ export async function updateNotificationPreferences(data: {
   wheelReviewEnabled?: boolean;
   wheelReviewDay?: number;
   wheelReviewTime?: string;
+  timezone?: string;
 }) {
   const user = await requireUser();
 
@@ -20,6 +21,17 @@ export async function updateNotificationPreferences(data: {
   });
 
   revalidateUserData(user.id);
+}
+
+export async function ensureUserTimezone(timezone: string) {
+  const user = await requireUser();
+  if (!timezone) return;
+
+  await prisma.notificationPreference.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, timezone },
+    update: { timezone },
+  });
 }
 
 /** Удаляет все цели, привычки, оценки и возвращает к онбордингу */

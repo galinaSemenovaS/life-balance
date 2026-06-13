@@ -41,6 +41,7 @@ export function TaskSettingsForm({
                 recurrenceJson: formData.get("recurrence") as string,
                 reminderTime: (formData.get("reminderTime") as string) || null,
                 reminderEnabled: formData.get("reminderEnabled") === "1",
+                timezone: (formData.get("timezone") as string) || undefined,
               });
               toast.success("Задача обновлена");
             } catch {

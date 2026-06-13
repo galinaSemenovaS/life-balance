@@ -74,6 +74,7 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
                 reminderEnabled: formData.get("reminderEnabled") === "1",
                 reminderTime: (formData.get("reminderTime") as string) || undefined,
                 recurrenceJson: formData.get("recurrence") as string,
+                timezone: (formData.get("timezone") as string) || undefined,
               });
               toast.success("Привычка добавлена");
             } catch {
@@ -126,6 +127,7 @@ export function CreateTaskForm({ goalId }: { goalId: string }) {
                 recurrenceJson: formData.get("recurrence") as string,
                 reminderEnabled: formData.get("reminderEnabled") === "1",
                 reminderTime: (formData.get("reminderTime") as string) || undefined,
+                timezone: (formData.get("timezone") as string) || undefined,
               });
               toast.success("Задача добавлена");
             } catch {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { getBrowserTimeZone } from "@/components/push/subscribe";
 
 type ItemReminderFieldsProps = {
   defaultEnabled?: boolean;
@@ -34,6 +35,7 @@ export function ItemReminderFields({
         />
       </div>
       <input type="hidden" name={enabledName} value={enabled ? "1" : "0"} />
+      <input type="hidden" name="timezone" value={getBrowserTimeZone()} />
       <div className="space-y-2">
         <Label htmlFor={timeName}>Время</Label>
         <Input

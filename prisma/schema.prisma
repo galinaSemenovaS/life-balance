@@ -214,6 +214,7 @@ model PushSubscription {
 model NotificationPreference {
   id                 String  @id @default(cuid())
   userId             String  @unique
+  timezone           String  @default("Europe/Moscow")
   wheelReviewDay     Int     @default(0)
   wheelReviewTime    String  @default("10:00")
   habitsEnabled      Boolean @default(true)

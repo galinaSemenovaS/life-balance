@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
+import { ensureUserTimezone } from "@/actions/settings";
 import { getNextOccurrence, parseRecurrenceJson } from "@/lib/recurrence";
 
 export async function createGoal(data: {
@@ -76,8 +77,10 @@ export async function createTask(data: {
   recurrenceJson?: string;
   reminderTime?: string;
   reminderEnabled?: boolean;
+  timezone?: string;
 }) {
   const user = await requireUser();
+  if (data.timezone) await ensureUserTimezone(data.timezone);
   const goal = await prisma.goal.findFirst({
     where: { id: data.goalId, userId: user.id },
   });
@@ -110,9 +113,11 @@ export async function updateTaskSettings(
     recurrenceJson?: string;
     reminderTime?: string | null;
     reminderEnabled?: boolean;
+    timezone?: string;
   }
 ) {
   const user = await requireUser();
+  if (data.timezone) await ensureUserTimezone(data.timezone);
   const task = await prisma.task.findFirst({
     where: { id: taskId, goal: { userId: user.id } },
   });

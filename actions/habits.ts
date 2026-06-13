@@ -4,6 +4,7 @@ import { startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
+import { ensureUserTimezone } from "@/actions/settings";
 import {
   getNextOccurrence,
   parseRecurrenceJson,
@@ -24,8 +25,10 @@ export async function createHabit(data: {
   reminderTime?: string;
   reminderEnabled?: boolean;
   recurrenceJson?: string;
+  timezone?: string;
 }) {
   const user = await requireUser();
+  if (data.timezone) await ensureUserTimezone(data.timezone);
   const rule = parseRecurrenceJson(
     data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
   );
@@ -91,9 +94,11 @@ export async function updateHabitSettings(
     reminderTime?: string | null;
     reminderEnabled?: boolean;
     recurrenceJson?: string;
+    timezone?: string;
   }
 ) {
   const user = await requireUser();
+  if (data.timezone) await ensureUserTimezone(data.timezone);
 
   const rule = data.recurrenceJson
     ? parseRecurrenceJson(JSON.parse(data.recurrenceJson))

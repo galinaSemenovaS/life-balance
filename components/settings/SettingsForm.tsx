@@ -5,6 +5,8 @@ import { updateNotificationPreferences } from "@/actions/settings";
 import { renameSphere } from "@/actions/spheres";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ResetWheelSection } from "@/components/settings/ResetWheelSection";
+import { PushNotificationsSection } from "@/components/settings/PushNotificationsSection";
+import { getBrowserTimeZone } from "@/components/push/subscribe";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -38,6 +40,7 @@ export function SettingsForm({
         wheelReviewEnabled,
         wheelReviewDay,
         wheelReviewTime,
+        timezone: getBrowserTimeZone(),
       });
       toast.success("Настройки сохранены");
     });
@@ -52,6 +55,8 @@ export function SettingsForm({
       </Card>
 
       <ResetWheelSection />
+
+      <PushNotificationsSection />
 
       <Card className="space-y-4">
         <h3 className="font-semibold">Уведомления</h3>

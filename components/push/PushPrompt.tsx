@@ -1,19 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { subscribeToPush, hasPushSubscription } from "@/components/push/subscribe";
 import { Button } from "@/components/ui/button";
 import { Bell, X } from "lucide-react";
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 export function PushPrompt() {
   const [visible, setVisible] = useState(false);
@@ -21,44 +11,34 @@ export function PushPrompt() {
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    if (Notification.permission === "granted") return;
-    const dismissed = localStorage.getItem("push-prompt-dismissed");
-    if (!dismissed) setVisible(true);
+
+    void (async () => {
+      const subscribed = await hasPushSubscription();
+      if (subscribed) return;
+
+      if (Notification.permission === "granted") {
+        const result = await subscribeToPush();
+        if (result.ok) return;
+      }
+
+      if (Notification.permission === "denied") return;
+
+      const dismissed = localStorage.getItem("push-prompt-dismissed");
+      if (!dismissed) setVisible(true);
+    })();
   }, []);
 
   const subscribe = async () => {
     setLoading(true);
     try {
-      const reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
+      const result = await subscribeToPush();
+      if (result.ok) {
         setVisible(false);
         return;
       }
-
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidKey) {
-        console.warn("VAPID public key missing");
-        return;
+      if (result.reason === "denied") {
+        setVisible(false);
       }
-
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-
-      const json = subscription.toJSON();
-      await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(json),
-      });
-
-      setVisible(false);
-    } catch (e) {
-      console.error(e);
     } finally {
       setLoading(false);
     }

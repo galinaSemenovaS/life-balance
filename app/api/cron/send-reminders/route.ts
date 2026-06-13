@@ -1,11 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushNotification } from "@/lib/push";
+import { DEFAULT_TIMEZONE, getLocalDay, getLocalHHmm } from "@/lib/timezone";
 import { NextResponse } from "next/server";
-
-function currentTimeHHmm() {
-  const now = new Date();
-  return `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
-}
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -14,21 +10,32 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
-  const day = now.getUTCDay();
-  const time = currentTimeHHmm();
+  let habitsSent = 0;
+  let tasksSent = 0;
+  let wheelSent = 0;
 
   const habits = await prisma.habit.findMany({
     where: {
       isActive: true,
       reminderEnabled: true,
-      reminderTime: time,
+      reminderTime: { not: null },
     },
     include: {
-      user: { include: { pushSubscriptions: true } },
+      user: {
+        include: {
+          pushSubscriptions: true,
+          notificationPreference: true,
+        },
+      },
     },
   });
 
   for (const habit of habits) {
+    if (habit.user.pushSubscriptions.length === 0) continue;
+
+    const tz = habit.user.notificationPreference?.timezone ?? DEFAULT_TIMEZONE;
+    if (getLocalHHmm(now, tz) !== habit.reminderTime) continue;
+
     for (const sub of habit.user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
@@ -36,6 +43,7 @@ export async function GET(req: Request) {
           body: habit.title,
           url: "/today",
         });
+        habitsSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
@@ -45,26 +53,38 @@ export async function GET(req: Request) {
   const tasks = await prisma.task.findMany({
     where: {
       reminderEnabled: true,
-      reminderTime: time,
+      reminderTime: { not: null },
       status: "PENDING",
     },
     include: {
       goal: {
         include: {
-          user: { include: { pushSubscriptions: true } },
+          user: {
+            include: {
+              pushSubscriptions: true,
+              notificationPreference: true,
+            },
+          },
         },
       },
     },
   });
 
   for (const task of tasks) {
-    for (const sub of task.goal.user.pushSubscriptions) {
+    const user = task.goal.user;
+    if (user.pushSubscriptions.length === 0) continue;
+
+    const tz = user.notificationPreference?.timezone ?? DEFAULT_TIMEZONE;
+    if (getLocalHHmm(now, tz) !== task.reminderTime) continue;
+
+    for (const sub of user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
           title: "Напоминание о задаче",
           body: task.title,
           url: "/today",
         });
+        tasksSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
@@ -72,17 +92,19 @@ export async function GET(req: Request) {
   }
 
   const wheelUsers = await prisma.notificationPreference.findMany({
-    where: {
-      wheelReviewEnabled: true,
-      wheelReviewDay: day,
-      wheelReviewTime: time,
-    },
+    where: { wheelReviewEnabled: true },
     include: {
       user: { include: { pushSubscriptions: true } },
     },
   });
 
   for (const pref of wheelUsers) {
+    if (pref.user.pushSubscriptions.length === 0) continue;
+
+    const tz = pref.timezone ?? DEFAULT_TIMEZONE;
+    if (getLocalDay(now, tz) !== pref.wheelReviewDay) continue;
+    if (getLocalHHmm(now, tz) !== pref.wheelReviewTime) continue;
+
     for (const sub of pref.user.pushSubscriptions) {
       try {
         await sendPushNotification(sub, {
@@ -90,6 +112,7 @@ export async function GET(req: Request) {
           body: "Уделите 5 минут оценке сфер жизни",
           url: "/spheres",
         });
+        wheelSent++;
       } catch (e) {
         console.error("Push failed", e);
       }
@@ -98,8 +121,8 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    habits: habits.length,
-    tasks: tasks.length,
-    wheel: wheelUsers.length,
+    habits: habitsSent,
+    tasks: tasksSent,
+    wheel: wheelSent,
   });
 }
