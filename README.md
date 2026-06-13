@@ -139,4 +139,28 @@ pnpm dlx vercel --prod
 1. Откройте https://life-balance-murex.vercel.app
 2. Войдите через Google
 3. Добавьте PWA на домашний экран (для push на iOS)
-4. Cron `/api/cron/send-reminders` работает по расписанию из `vercel.json` (нужен `CRON_SECRET`)
+4. Cron `/api/cron/send-reminders` — см. раздел ниже про push и cron
+
+## Push-напоминания и Cron
+
+**Vercel Hobby** позволяет cron **не чаще 1 раза в сутки**. В `vercel.json` стоит `0 9 * * *` (09:00 UTC) — деплой проходит, но напоминания в произвольное локальное время **не сработают** на Hobby.
+
+### Вариант A — Vercel Pro
+
+На Pro можно поставить в `vercel.json` расписание `* * * * *` (каждую минуту).
+
+### Вариант B — бесплатный внешний cron (Hobby)
+
+1. Зарегистрируйтесь на [cron-job.org](https://cron-job.org) (или аналог)
+2. Создайте job **каждую минуту**:
+   - URL: `https://life-balance-murex.vercel.app/api/cron/send-reminders`
+   - Method: `GET`
+   - Header: `Authorization: Bearer ВАШ_CRON_SECRET`
+3. Убедитесь, что на Vercel задан `CRON_SECRET` (тот же, что в header)
+
+### Чеклист push
+
+1. **Настройки** → «Включить push»
+2. У задачи/привычки: включить **Push-напоминание** + время
+3. Vercel env: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`
+4. iOS: PWA на экран «Домой»
