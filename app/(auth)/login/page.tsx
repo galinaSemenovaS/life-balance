@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { AppLogo } from "@/components/branding/AppLogo";
 import { signIn } from "@/lib/auth";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { APP_TITLE_RU } from "@/lib/branding";
@@ -36,14 +36,7 @@ export default async function LoginPage({
     <div className="app-shell-bg flex min-h-dvh items-center justify-center px-4">
       <Card className="w-full max-w-sm border-0 shadow-2xl shadow-slate-900/5 dark:shadow-black/20">
         <CardHeader className="items-center text-center">
-          <Image
-            src="/icons/icon-192.png"
-            alt="Life Balance"
-            width={80}
-            height={80}
-            className="mb-2 rounded-3xl shadow-lg ring-4 ring-slate-100 dark:ring-slate-800"
-            priority
-          />
+          <AppLogo size={80} className="mb-2 drop-shadow-lg" />
           <CardTitle className="bg-gradient-to-r from-teal-700 to-teal-600 bg-clip-text text-transparent dark:from-teal-300 dark:to-teal-300">
             {APP_TITLE_RU}
           </CardTitle>

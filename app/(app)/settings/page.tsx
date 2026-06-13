@@ -22,7 +22,6 @@ export default async function SettingsPage() {
       <SettingsForm
         spheres={spheres}
         preferences={{
-          habitsEnabled: prefs?.habitsEnabled ?? true,
           wheelReviewEnabled: prefs?.wheelReviewEnabled ?? true,
           wheelReviewDay: prefs?.wheelReviewDay ?? 0,
           wheelReviewTime: prefs?.wheelReviewTime ?? "10:00",

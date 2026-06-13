@@ -32,6 +32,8 @@ export default async function GoalPage({
     status: t.status,
     dueDate: t.dueDate?.toISOString() ?? null,
     recurrence: t.recurrence,
+    reminderTime: t.reminderTime,
+    reminderEnabled: t.reminderEnabled,
   });
 
   return (
@@ -55,6 +57,7 @@ export default async function GoalPage({
         id: h.id,
         title: h.title,
         reminderTime: h.reminderTime,
+        reminderEnabled: h.reminderEnabled,
         schedule: h.schedule,
         endDate: h.endDate?.toISOString() ?? null,
       }))}

@@ -20,14 +20,12 @@ export function SettingsForm({
 }: {
   spheres: { id: string; name: string }[];
   preferences: {
-    habitsEnabled: boolean;
     wheelReviewEnabled: boolean;
     wheelReviewDay: number;
     wheelReviewTime: string;
   };
 }) {
   const [pending, startTransition] = useTransition();
-  const [habitsEnabled, setHabitsEnabled] = useState(preferences.habitsEnabled);
   const [wheelReviewEnabled, setWheelReviewEnabled] = useState(
     preferences.wheelReviewEnabled
   );
@@ -37,7 +35,6 @@ export function SettingsForm({
   const saveNotifications = () => {
     startTransition(async () => {
       await updateNotificationPreferences({
-        habitsEnabled,
         wheelReviewEnabled,
         wheelReviewDay,
         wheelReviewTime,
@@ -58,14 +55,9 @@ export function SettingsForm({
 
       <Card className="space-y-4">
         <h3 className="font-semibold">Уведомления</h3>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="habitsEnabled">Напоминания о привычках</Label>
-          <Switch
-            id="habitsEnabled"
-            checked={habitsEnabled}
-            onCheckedChange={setHabitsEnabled}
-          />
-        </div>
+        <p className="text-xs text-slate-500">
+          Push для задач и привычек настраивается отдельно в каждой записи на странице цели.
+        </p>
         <div className="flex items-center justify-between">
           <Label htmlFor="wheelReviewEnabled">Пересмотр колеса</Label>
           <Switch

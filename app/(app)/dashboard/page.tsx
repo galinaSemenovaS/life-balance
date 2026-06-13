@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCachedDashboardData } from "@/lib/data/queries";
-import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday, isTaskDueToday } from "@/lib/progress";
+import { getGoalProgress, getHabitStreak, getTodayProgress, isHabitDueToday, isTaskOnTodayList } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { WheelChart } from "@/components/wheel/WheelChart";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   }));
 
   const dueHabits = habits.filter((h) => isHabitDueToday(h, today));
-  const dueTasks = todayTasks.filter((t) => isTaskDueToday(t, today));
+  const dueTasks = todayTasks.filter((t) => isTaskOnTodayList(t, today));
   const dayProgress = getTodayProgress(
     dueHabits.map((h) => ({
       ...h,

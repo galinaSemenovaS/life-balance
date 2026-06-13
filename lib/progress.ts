@@ -61,13 +61,19 @@ export function isTaskDueToday(
   task: Pick<Task, "dueDate" | "recurrence" | "status">,
   date = new Date()
 ): boolean {
-  if (task.status === "COMPLETED" && !task.recurrence) return false;
+  return isTaskOnTodayList(task, date);
+}
+
+/** Задачи на экране «Сегодня» — включая выполненные за сегодня */
+export function isTaskOnTodayList(
+  task: Pick<Task, "dueDate" | "recurrence" | "status">,
+  date = new Date()
+): boolean {
   const rule = parseRecurrenceJson(task.recurrence);
-  const anchor = task.dueDate ?? date;
   if (rule.preset === "none") {
     return task.dueDate ? isSameDay(task.dueDate, date) : false;
   }
-  return isDueOnDate(rule, date, anchor);
+  return isDueOnDate(rule, date, task.dueDate ?? date);
 }
 
 type HabitForProgress = Pick<
@@ -91,7 +97,7 @@ export function getTodayProgress(
     h.logs.some((l) => l.completed && isSameDay(l.date, today))
   ).length;
 
-  const todayTasks = tasks.filter((t) => isTaskDueToday(t, today));
+  const todayTasks = tasks.filter((t) => isTaskOnTodayList(t, today));
   const taskDone = todayTasks.filter((t) => t.status === "COMPLETED").length;
 
   const total = dueHabits.length + todayTasks.length;

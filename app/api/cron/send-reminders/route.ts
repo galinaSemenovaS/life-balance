@@ -20,10 +20,8 @@ export async function GET(req: Request) {
   const habits = await prisma.habit.findMany({
     where: {
       isActive: true,
+      reminderEnabled: true,
       reminderTime: time,
-      user: {
-        notificationPreference: { habitsEnabled: true },
-      },
     },
     include: {
       user: { include: { pushSubscriptions: true } },
@@ -36,6 +34,35 @@ export async function GET(req: Request) {
         await sendPushNotification(sub, {
           title: "Напоминание о привычке",
           body: habit.title,
+          url: "/today",
+        });
+      } catch (e) {
+        console.error("Push failed", e);
+      }
+    }
+  }
+
+  const tasks = await prisma.task.findMany({
+    where: {
+      reminderEnabled: true,
+      reminderTime: time,
+      status: "PENDING",
+    },
+    include: {
+      goal: {
+        include: {
+          user: { include: { pushSubscriptions: true } },
+        },
+      },
+    },
+  });
+
+  for (const task of tasks) {
+    for (const sub of task.goal.user.pushSubscriptions) {
+      try {
+        await sendPushNotification(sub, {
+          title: "Напоминание о задаче",
+          body: task.title,
           url: "/today",
         });
       } catch (e) {
@@ -69,5 +96,10 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, habits: habits.length, wheel: wheelUsers.length });
+  return NextResponse.json({
+    ok: true,
+    habits: habits.length,
+    tasks: tasks.length,
+    wheel: wheelUsers.length,
+  });
 }

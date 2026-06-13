@@ -17,9 +17,12 @@ import {
   CreateHabitForm,
   CreateTaskForm,
 } from "@/components/goals/GoalForm";
+import { HabitSettingsForm } from "@/components/goals/HabitSettingsForm";
+import { TaskSettingsForm } from "@/components/goals/TaskSettingsForm";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
 import { ArrowLeft } from "lucide-react";
 import { getGoalProgress } from "@/lib/progress";
+import { cn } from "@/lib/utils";
 
 type Task = {
   id: string;
@@ -27,18 +30,74 @@ type Task = {
   status: string;
   dueDate: string | null;
   recurrence: unknown;
+  reminderTime: string | null;
+  reminderEnabled: boolean;
 };
 type Step = { id: string; title: string; order: number; tasks: Task[] };
 type Habit = {
   id: string;
   title: string;
   reminderTime: string | null;
+  reminderEnabled: boolean;
   schedule: unknown;
   endDate: string | null;
 };
 
 function metaLine(parts: (string | null | undefined)[]) {
   return parts.filter(Boolean).join(" · ");
+}
+
+function TaskRow({
+  task,
+  pending,
+  onToggle,
+}: {
+  task: Task;
+  pending: boolean;
+  onToggle: (completed: boolean) => void;
+}) {
+  const completed = task.status === "COMPLETED";
+
+  return (
+    <Card className={cn("space-y-2 py-3", completed && "opacity-80")}>
+      <div className="flex items-start gap-2">
+        <Checkbox
+          className="mt-0.5"
+          checked={completed}
+          disabled={pending}
+          onCheckedChange={(checked) => onToggle(checked === true)}
+        />
+        <div className="flex-1">
+          <p
+            className={cn(
+              "text-sm font-medium",
+              completed && "text-slate-500 line-through"
+            )}
+          >
+            {task.title}
+          </p>
+          <p className="text-xs text-slate-500">
+            {metaLine([
+              task.dueDate
+                ? new Date(task.dueDate).toLocaleDateString("ru-RU")
+                : null,
+              formatRecurrenceLabel(parseRecurrenceJson(task.recurrence)),
+              task.reminderEnabled && task.reminderTime
+                ? `push ${task.reminderTime}`
+                : null,
+            ])}
+          </p>
+        </div>
+      </div>
+      <TaskSettingsForm
+        taskId={task.id}
+        dueDate={task.dueDate}
+        recurrence={task.recurrence}
+        reminderTime={task.reminderTime}
+        reminderEnabled={task.reminderEnabled}
+      />
+    </Card>
+  );
 }
 
 export function GoalDetail({
@@ -116,29 +175,16 @@ export function GoalDetail({
           <Card key={step.id} className="space-y-2">
             <p className="font-medium">{step.title}</p>
             {step.tasks.map((task) => (
-              <div key={task.id} className="flex items-start gap-2">
-                <Checkbox
-                  className="mt-0.5"
-                  checked={task.status === "COMPLETED"}
-                  disabled={pending}
-                  onCheckedChange={(checked) => {
-                    startTransition(async () => {
-                      await toggleTask(task.id, checked === true);
-                    });
-                  }}
-                />
-                <div>
-                  <span className="text-sm">{task.title}</span>
-                  <p className="text-xs text-slate-500">
-                    {metaLine([
-                      task.dueDate
-                        ? new Date(task.dueDate).toLocaleDateString("ru-RU")
-                        : null,
-                      formatRecurrenceLabel(parseRecurrenceJson(task.recurrence)),
-                    ])}
-                  </p>
-                </div>
-              </div>
+              <TaskRow
+                key={task.id}
+                task={task}
+                pending={pending}
+                onToggle={(completed) =>
+                  startTransition(async () => {
+                    await toggleTask(task.id, completed);
+                  })
+                }
+              />
             ))}
           </Card>
         ))}
@@ -163,29 +209,16 @@ export function GoalDetail({
       <section className="space-y-3">
         <h2 className="font-semibold">Задачи</h2>
         {looseTasks.map((task) => (
-          <Card key={task.id} className="flex items-start gap-2 py-3">
-            <Checkbox
-              className="mt-0.5"
-              checked={task.status === "COMPLETED"}
-              disabled={pending}
-              onCheckedChange={(checked) => {
-                startTransition(async () => {
-                  await toggleTask(task.id, checked === true);
-                });
-              }}
-            />
-            <div className="flex-1">
-              <p className="text-sm font-medium">{task.title}</p>
-              <p className="text-xs text-slate-500">
-                {metaLine([
-                  task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString("ru-RU")
-                    : null,
-                  formatRecurrenceLabel(parseRecurrenceJson(task.recurrence)),
-                ])}
-              </p>
-            </div>
-          </Card>
+          <TaskRow
+            key={task.id}
+            task={task}
+            pending={pending}
+            onToggle={(completed) =>
+              startTransition(async () => {
+                await toggleTask(task.id, completed);
+              })
+            }
+          />
         ))}
         <CreateTaskForm goalId={goal.id} />
       </section>
@@ -193,17 +226,27 @@ export function GoalDetail({
       <section className="space-y-3">
         <h2 className="font-semibold">Привычки</h2>
         {habits.map((habit) => (
-          <Card key={habit.id} className="py-3 text-sm">
-            <p className="font-medium">{habit.title}</p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {metaLine([
-                formatRecurrenceLabel(parseRecurrenceJson(habit.schedule)),
-                habit.reminderTime ? `напом. ${habit.reminderTime}` : null,
-                habit.endDate
-                  ? `до ${new Date(habit.endDate).toLocaleDateString("ru-RU")}`
-                  : null,
-              ])}
-            </p>
+          <Card key={habit.id} className="space-y-2 py-3 text-sm">
+            <div>
+              <p className="font-medium">{habit.title}</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {metaLine([
+                  formatRecurrenceLabel(parseRecurrenceJson(habit.schedule)),
+                  habit.reminderEnabled && habit.reminderTime
+                    ? `push ${habit.reminderTime}`
+                    : null,
+                  habit.endDate
+                    ? `до ${new Date(habit.endDate).toLocaleDateString("ru-RU")}`
+                    : null,
+                ])}
+              </p>
+            </div>
+            <HabitSettingsForm
+              habitId={habit.id}
+              schedule={habit.schedule}
+              reminderTime={habit.reminderTime}
+              reminderEnabled={habit.reminderEnabled}
+            />
           </Card>
         ))}
         <CreateHabitForm goalId={goal.id} />

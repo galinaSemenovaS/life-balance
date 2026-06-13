@@ -22,6 +22,7 @@ export async function createHabit(data: {
   title: string;
   goalId: string;
   reminderTime?: string;
+  reminderEnabled?: boolean;
   recurrenceJson?: string;
 }) {
   const user = await requireUser();
@@ -41,7 +42,9 @@ export async function createHabit(data: {
       title: data.title,
       sphereId: goal.sphereId,
       goalId: goal.id,
-      reminderTime: data.reminderTime,
+      reminderEnabled: data.reminderEnabled ?? false,
+      reminderTime:
+        data.reminderEnabled && data.reminderTime ? data.reminderTime : undefined,
       frequency: recurrenceToFrequency(rule),
       schedule: rule as object,
       endDate: endDateFromRule(rule),
@@ -82,16 +85,46 @@ export async function toggleHabitLog(
   revalidateUserData(user.id);
 }
 
+export async function updateHabitSettings(
+  habitId: string,
+  data: {
+    reminderTime?: string | null;
+    reminderEnabled?: boolean;
+    recurrenceJson?: string;
+  }
+) {
+  const user = await requireUser();
+
+  const rule = data.recurrenceJson
+    ? parseRecurrenceJson(JSON.parse(data.recurrenceJson))
+    : null;
+
+  await prisma.habit.updateMany({
+    where: { id: habitId, userId: user.id },
+    data: {
+      ...(rule
+        ? {
+            frequency: recurrenceToFrequency(rule),
+            schedule: rule as object,
+            endDate: endDateFromRule(rule),
+          }
+        : {}),
+      reminderEnabled: data.reminderEnabled ?? false,
+      reminderTime:
+        data.reminderEnabled && data.reminderTime ? data.reminderTime : null,
+    },
+  });
+
+  revalidateUserData(user.id);
+}
+
+/** @deprecated используйте updateHabitSettings */
 export async function updateHabitReminder(
   habitId: string,
   reminderTime: string | null
 ) {
-  const user = await requireUser();
-
-  await prisma.habit.updateMany({
-    where: { id: habitId, userId: user.id },
-    data: { reminderTime },
+  await updateHabitSettings(habitId, {
+    reminderTime,
+    reminderEnabled: Boolean(reminderTime),
   });
-
-  revalidateUserData(user.id);
 }

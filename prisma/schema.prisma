@@ -146,13 +146,15 @@ enum TaskStatus {
 }
 
 model Task {
-  id         String           @id @default(cuid())
-  goalId     String
-  planStepId String?
-  title      String
-  dueDate    DateTime?
-  recurrence Json?
-  status     TaskStatus       @default(PENDING)
+  id              String           @id @default(cuid())
+  goalId          String
+  planStepId      String?
+  title           String
+  dueDate         DateTime?
+  recurrence      Json?
+  reminderTime    String?
+  reminderEnabled Boolean          @default(false)
+  status          TaskStatus       @default(PENDING)
   goal       Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
   planStep   PlanStep?        @relation(fields: [planStepId], references: [id], onDelete: SetNull)
   createdAt  DateTime         @default(now())
@@ -175,9 +177,10 @@ model Habit {
   title        String
   frequency    HabitFrequency @default(DAILY)
   schedule     Json?
-  reminderTime String?
-  endDate      DateTime?
-  isActive     Boolean        @default(true)
+  reminderTime    String?
+  reminderEnabled Boolean        @default(false)
+  endDate         DateTime?
+  isActive        Boolean        @default(true)
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   sphere       Sphere?        @relation(fields: [sphereId], references: [id], onDelete: SetNull)
   goal         Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)

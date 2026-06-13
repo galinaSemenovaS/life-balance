@@ -1,5 +1,5 @@
 import { getCachedTodayData } from "@/lib/data/queries";
-import { isHabitDueToday, isTaskDueToday } from "@/lib/progress";
+import { isHabitDueToday, isTaskOnTodayList } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { TodayList } from "@/components/today/TodayList";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
@@ -9,7 +9,7 @@ export default async function TodayPage() {
   const { habits, tasks, today } = await getCachedTodayData(user.id);
 
   const dueHabits = habits.filter((h) => isHabitDueToday(h, today));
-  const dueTasks = tasks.filter((t) => isTaskDueToday(t, today));
+  const dueTasks = tasks.filter((t) => isTaskOnTodayList(t, today));
 
   return (
     <TodayList

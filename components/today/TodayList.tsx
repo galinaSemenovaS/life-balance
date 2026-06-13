@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { CalendarCheck } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type HabitItem = {
   id: string;
@@ -26,6 +27,45 @@ type TaskItem = {
   recurrenceLabel?: string;
   completed: boolean;
 };
+
+function TaskCard({
+  task,
+  pending,
+  onToggle,
+}: {
+  task: TaskItem;
+  pending: boolean;
+  onToggle: (completed: boolean) => void;
+}) {
+  return (
+    <Card
+      className={cn(
+        "flex items-center gap-3 py-3",
+        task.completed && "opacity-75"
+      )}
+    >
+      <Checkbox
+        checked={task.completed}
+        disabled={pending}
+        onCheckedChange={(checked) => onToggle(checked === true)}
+      />
+      <div className="flex-1">
+        <p
+          className={cn(
+            "font-medium",
+            task.completed && "text-slate-500 line-through"
+          )}
+        >
+          {task.title}
+        </p>
+        <p className="text-xs text-slate-500">{task.goalTitle}</p>
+        {task.recurrenceLabel && task.recurrenceLabel !== "Не повторяется" ? (
+          <p className="text-xs text-slate-400">{task.recurrenceLabel}</p>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
 
 export function TodayList({
   habits: initialHabits,
@@ -49,7 +89,22 @@ export function TodayList({
   const total = habits.length + tasks.length;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
 
+  const pendingTasks = tasks.filter((t) => !t.completed);
+  const completedTasks = tasks.filter((t) => t.completed);
   const isEmpty = habits.length === 0 && tasks.length === 0;
+
+  const toggleTaskItem = (taskId: string, completed: boolean) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
+    );
+    startTransition(async () => {
+      try {
+        await toggleTask(taskId, completed);
+      } catch {
+        setTasks(initialTasks);
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -110,7 +165,14 @@ export function TodayList({
                     }}
                   />
                   <div className="flex-1">
-                    <p className="font-medium">{habit.title}</p>
+                    <p
+                      className={cn(
+                        "font-medium",
+                        habit.completed && "text-slate-500 line-through"
+                      )}
+                    >
+                      {habit.title}
+                    </p>
                     {habit.goalTitle && (
                       <p className="text-xs text-slate-500">Цель: {habit.goalTitle}</p>
                     )}
@@ -133,37 +195,27 @@ export function TodayList({
           {tasks.length > 0 && (
             <section className="space-y-2">
               <h2 className="text-sm font-semibold text-slate-500">Задачи</h2>
-              {tasks.map((task) => (
-                <Card key={task.id} className="flex items-center gap-3 py-3">
-                  <Checkbox
-                    checked={task.completed}
-                    disabled={pending}
-                    onCheckedChange={(checked) => {
-                      const completed = checked === true;
-                      setTasks((prev) =>
-                        prev.map((t) =>
-                          t.id === task.id ? { ...t, completed } : t
-                        )
-                      );
-                      startTransition(async () => {
-                        try {
-                          await toggleTask(task.id, completed);
-                        } catch {
-                          setTasks(initialTasks);
-                        }
-                      });
-                    }}
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium">{task.title}</p>
-                    <p className="text-xs text-slate-500">{task.goalTitle}</p>
-                    {task.recurrenceLabel &&
-                    task.recurrenceLabel !== "Не повторяется" ? (
-                      <p className="text-xs text-slate-400">{task.recurrenceLabel}</p>
-                    ) : null}
-                  </div>
-                </Card>
+              {pendingTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  pending={pending}
+                  onToggle={(completed) => toggleTaskItem(task.id, completed)}
+                />
               ))}
+              {completedTasks.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <p className="text-xs font-medium text-slate-400">Выполнено</p>
+                  {completedTasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      pending={pending}
+                      onToggle={(completed) => toggleTaskItem(task.id, completed)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           )}
         </>

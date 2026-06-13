@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CollapsibleForm } from "@/components/ui/collapsible-form";
+import { ItemReminderFields } from "@/components/ui/item-reminder-fields";
 import { RecurrencePicker } from "@/components/ui/recurrence-picker";
 import { toast } from "sonner";
 
@@ -70,6 +71,7 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
               await createHabit({
                 title: formData.get("title") as string,
                 goalId,
+                reminderEnabled: formData.get("reminderEnabled") === "1",
                 reminderTime: (formData.get("reminderTime") as string) || undefined,
                 recurrenceJson: formData.get("recurrence") as string,
               });
@@ -98,10 +100,7 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
             endType: "never",
           }}
         />
-        <div className="space-y-2">
-          <Label htmlFor="reminderTime">Напоминание</Label>
-          <Input id="reminderTime" name="reminderTime" type="time" />
-        </div>
+        <ItemReminderFields />
         <Button type="submit" className="w-full" disabled={pending}>
           Добавить привычку
         </Button>
@@ -125,6 +124,8 @@ export function CreateTaskForm({ goalId }: { goalId: string }) {
                 title: formData.get("taskTitle") as string,
                 dueDate: (formData.get("dueDate") as string) || undefined,
                 recurrenceJson: formData.get("recurrence") as string,
+                reminderEnabled: formData.get("reminderEnabled") === "1",
+                reminderTime: (formData.get("reminderTime") as string) || undefined,
               });
               toast.success("Задача добавлена");
             } catch {
@@ -142,6 +143,7 @@ export function CreateTaskForm({ goalId }: { goalId: string }) {
           <Input id="dueDate" name="dueDate" type="date" />
         </div>
         <RecurrencePicker />
+        <ItemReminderFields />
         <Button type="submit" className="w-full" disabled={pending}>
           Добавить задачу
         </Button>

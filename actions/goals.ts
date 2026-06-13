@@ -1,5 +1,6 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
@@ -73,6 +74,8 @@ export async function createTask(data: {
   title: string;
   dueDate?: string;
   recurrenceJson?: string;
+  reminderTime?: string;
+  reminderEnabled?: boolean;
 }) {
   const user = await requireUser();
   const goal = await prisma.goal.findFirst({
@@ -91,11 +94,47 @@ export async function createTask(data: {
       title: data.title,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       recurrence: rule.preset !== "none" ? (rule as object) : undefined,
+      reminderTime: data.reminderEnabled ? data.reminderTime : undefined,
+      reminderEnabled: data.reminderEnabled ?? false,
     },
   });
 
   revalidateUserData(user.id);
   return task;
+}
+
+export async function updateTaskSettings(
+  taskId: string,
+  data: {
+    dueDate?: string;
+    recurrenceJson?: string;
+    reminderTime?: string | null;
+    reminderEnabled?: boolean;
+  }
+) {
+  const user = await requireUser();
+  const task = await prisma.task.findFirst({
+    where: { id: taskId, goal: { userId: user.id } },
+  });
+  if (!task) throw new Error("Task not found");
+
+  const rule = parseRecurrenceJson(
+    data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
+  );
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      dueDate: data.dueDate ? new Date(data.dueDate) : task.dueDate,
+      recurrence:
+        rule.preset !== "none" ? (rule as object) : Prisma.DbNull,
+      reminderEnabled: data.reminderEnabled ?? false,
+      reminderTime:
+        data.reminderEnabled && data.reminderTime ? data.reminderTime : null,
+    },
+  });
+
+  revalidateUserData(user.id);
 }
 
 export async function toggleTask(taskId: string, completed: boolean) {
