@@ -1,6 +1,6 @@
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   Configuration:
-    "Сервер не настроен: проверьте переменные окружения на Vercel (DATABASE_URL, AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET) и сделайте Redeploy.",
+    "Ошибка конфигурации входа. Проверьте AUTH_SECRET и Google OAuth на Vercel, затем сделайте Redeploy.",
   AccessDenied: "Доступ запрещён. Если приложение Google в режиме Testing, добавьте свой email в Test users.",
   Verification: "Ссылка для входа устарела или уже использована. Попробуйте снова.",
   OAuthSignin: "Не удалось начать вход через Google. Проверьте OAuth redirect URI в Google Console.",

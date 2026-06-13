@@ -1,8 +1,8 @@
-import Link from "next/link";
 import Image from "next/image";
+import { signIn } from "@/lib/auth";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { APP_TITLE_RU } from "@/lib/branding";
-import { Button } from "@/components/ui/button";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import {
   Card,
   CardContent,
@@ -10,6 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+async function signInWithGoogle(formData: FormData) {
+  "use server";
+
+  const callbackUrl = formData.get("callbackUrl");
+  const redirectTo =
+    typeof callbackUrl === "string" && callbackUrl.startsWith("/")
+      ? callbackUrl
+      : "/today";
+
+  await signIn("google", { redirectTo });
+}
 
 export default async function LoginPage({
   searchParams,
@@ -19,9 +31,6 @@ export default async function LoginPage({
   const { error, callbackUrl } = await searchParams;
   const errorMessage = getAuthErrorMessage(error);
   const afterLogin = callbackUrl?.startsWith("/") ? callbackUrl : "/today";
-  const signInHref = `/api/auth/signin/google?${new URLSearchParams({
-    callbackUrl: afterLogin,
-  }).toString()}`;
 
   return (
     <div className="app-shell-bg flex min-h-dvh items-center justify-center px-4">
@@ -51,9 +60,10 @@ export default async function LoginPage({
               {errorMessage}
             </p>
           ) : null}
-          <Button asChild className="w-full" size="lg">
-            <Link href={signInHref}>Войти через Google</Link>
-          </Button>
+          <form action={signInWithGoogle}>
+            <input type="hidden" name="callbackUrl" value={afterLogin} />
+            <GoogleSignInButton />
+          </form>
         </CardContent>
       </Card>
     </div>
