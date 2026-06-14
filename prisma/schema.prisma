@@ -176,6 +176,7 @@ model Habit {
   sphereId     String?
   goalId       String?
   title        String
+  description  String?
   frequency    HabitFrequency @default(DAILY)
   schedule     Json?
   reminderTime    String?

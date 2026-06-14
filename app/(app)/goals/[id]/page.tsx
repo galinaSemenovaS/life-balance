@@ -15,11 +15,7 @@ export default async function GoalPage({
     where: { id, userId: user.id },
     include: {
       sphere: true,
-      planSteps: {
-        orderBy: { order: "asc" },
-        include: { tasks: { orderBy: { createdAt: "asc" } } },
-      },
-      tasks: { where: { planStepId: null }, orderBy: { createdAt: "asc" } },
+      tasks: { orderBy: { createdAt: "asc" } },
       habits: { where: { isActive: true } },
     },
   });
@@ -43,19 +39,15 @@ export default async function GoalPage({
         title: goal.title,
         description: goal.description,
         status: goal.status,
+        deadline: goal.deadline?.toISOString() ?? null,
         sphere: { name: goal.sphere.name, color: goal.sphere.color },
       }}
       sphereId={goal.sphereId}
-      steps={goal.planSteps.map((s) => ({
-        id: s.id,
-        title: s.title,
-        order: s.order,
-        tasks: s.tasks.map(mapTask),
-      }))}
-      looseTasks={goal.tasks.map(mapTask)}
+      tasks={goal.tasks.map(mapTask)}
       habits={goal.habits.map((h) => ({
         id: h.id,
         title: h.title,
+        description: h.description,
         reminderTime: h.reminderTime,
         reminderEnabled: h.reminderEnabled,
         schedule: h.schedule,

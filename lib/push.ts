@@ -10,7 +10,7 @@ if (vapidPublicKey && vapidPrivateKey) {
 
 export async function sendPushNotification(
   subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: { title: string; body: string; url?: string }
+  payload: { title: string; body: string; url?: string; silent?: boolean; vibrate?: boolean }
 ) {
   if (!vapidPublicKey || !vapidPrivateKey) {
     console.warn("VAPID keys not configured");
@@ -22,6 +22,6 @@ export async function sendPushNotification(
       endpoint: subscription.endpoint,
       keys: { p256dh: subscription.p256dh, auth: subscription.auth },
     },
-    JSON.stringify(payload)
+    JSON.stringify({ silent: false, vibrate: true, ...payload })
   );
 }

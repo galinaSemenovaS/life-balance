@@ -8,8 +8,10 @@ import {
   DEFAULT_RECURRENCE,
   PRESET_OPTIONS,
   WEEKDAY_OPTIONS,
+  WEEK_OF_MONTH_OPTIONS,
   formatRecurrenceLabel,
   ruleFromPreset,
+  type MonthlyMode,
   type RecurrenceEndType,
   type RecurrencePreset,
   type RecurrenceRule,
@@ -19,7 +21,8 @@ import {
 type RecurrencePickerProps = {
   name?: string;
   defaultValue?: RecurrenceRule;
-  /** Показывать блок «Заканчивается» */
+  /** Якорная дата (dueDate) — для подписи «этого числа» */
+  anchorDate?: string | null;
   showEnds?: boolean;
   className?: string;
 };
@@ -31,9 +34,13 @@ const UNIT_OPTIONS: { value: RecurrenceUnit; label: string }[] = [
   { value: "year", label: "год" },
 ];
 
+const selectClass =
+  "h-11 w-full rounded-sm border border-[var(--border)] bg-[var(--surface)] px-3 text-sm outline-none focus-visible:border-[var(--foreground)] focus-visible:ring-1 focus-visible:ring-[var(--foreground)]";
+
 export function RecurrencePicker({
   name = "recurrence",
   defaultValue = DEFAULT_RECURRENCE,
+  anchorDate,
   showEnds = true,
   className,
 }: RecurrencePickerProps) {
@@ -44,16 +51,33 @@ export function RecurrencePicker({
   };
 
   const selectPreset = (preset: RecurrencePreset) => {
-    const next = ruleFromPreset(preset, rule);
-    setRule(next);
+    setRule(ruleFromPreset(preset, rule));
   };
 
   const toggleDay = (day: number) => {
     const days = rule.daysOfWeek.includes(day)
       ? rule.daysOfWeek.filter((d) => d !== day)
       : [...rule.daysOfWeek, day].sort((a, b) => a - b);
-    update({ daysOfWeek: days.length ? days : [day], preset: "weekly", unit: "week" });
+    update({
+      daysOfWeek: days.length ? days : [day],
+      preset: "custom",
+      unit: "week",
+    });
   };
+
+  const setSingleWeekday = (day: number) => {
+    update({ daysOfWeek: [day] });
+  };
+
+  const showCustomWeekDays = rule.preset === "custom" && rule.unit === "week";
+  const showCustomMonthOptions =
+    rule.preset === "custom" && rule.unit === "month";
+  const showCustomInterval = rule.preset === "custom";
+
+  const anchorDay =
+    anchorDate != null && anchorDate !== ""
+      ? new Date(anchorDate).getDate()
+      : null;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -64,7 +88,7 @@ export function RecurrencePicker({
         <select
           value={rule.preset}
           onChange={(e) => selectPreset(e.target.value as RecurrencePreset)}
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+          className={selectClass}
         >
           {PRESET_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -72,35 +96,17 @@ export function RecurrencePicker({
             </option>
           ))}
         </select>
-        <p className="text-xs text-slate-500">{formatRecurrenceLabel(rule)}</p>
+        <p className="text-xs text-[var(--muted)]">{formatRecurrenceLabel(rule)}</p>
+        {rule.preset === "monthly" && anchorDay != null && rule.monthlyMode !== "nthWeekday" ? (
+          <p className="text-xs text-[var(--muted)]">
+            Повтор каждый месяц {anchorDay}-го числа
+          </p>
+        ) : null}
       </div>
 
-      {(rule.preset === "weekly" || rule.preset === "custom") && (
-        <div className="space-y-2">
-          <Label className="text-xs text-slate-500">Дни недели</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {WEEKDAY_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => toggleDay(value)}
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-colors",
-                  rule.daysOfWeek.includes(value)
-                    ? "bg-teal-600 text-white"
-                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {rule.preset === "custom" && (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-          <span className="shrink-0 text-sm text-slate-500">Каждые</span>
+      {showCustomInterval && (
+        <div className="flex items-center gap-2 border border-[var(--border)] p-3">
+          <span className="shrink-0 text-sm text-[var(--muted)]">Каждые</span>
           <Input
             type="number"
             min={1}
@@ -113,8 +119,16 @@ export function RecurrencePicker({
           />
           <select
             value={rule.unit}
-            onChange={(e) => update({ unit: e.target.value as RecurrenceUnit })}
-            className="h-11 flex-1 rounded-xl border border-slate-200 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+            onChange={(e) => {
+              const unit = e.target.value as RecurrenceUnit;
+              update({
+                unit,
+                ...(unit === "month"
+                  ? { monthlyMode: rule.monthlyMode ?? "dayOfMonth" }
+                  : {}),
+              });
+            }}
+            className={cn(selectClass, "flex-1")}
           >
             {UNIT_OPTIONS.map((u) => (
               <option key={u.value} value={u.value}>
@@ -125,9 +139,104 @@ export function RecurrencePicker({
         </div>
       )}
 
+      {showCustomWeekDays && (
+        <div className="space-y-2">
+          <Label className="text-xs text-[var(--muted)]">Дни недели</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {WEEKDAY_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => toggleDay(value)}
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-sm border text-xs font-medium transition-colors duration-300",
+                  rule.daysOfWeek.includes(value)
+                    ? "border-[var(--accent)] bg-[var(--primary-soft)] text-[var(--foreground)]"
+                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showCustomMonthOptions && (
+        <div className="space-y-3 border border-[var(--border)] p-3">
+          <Label className="text-xs text-[var(--muted)]">Ежемесячно</Label>
+          <div className="space-y-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={`${name}-monthly-mode`}
+                checked={rule.monthlyMode !== "nthWeekday"}
+                onChange={() => update({ monthlyMode: "dayOfMonth" as MonthlyMode })}
+                className="accent-[var(--accent)]"
+              />
+              <span>
+                {anchorDay != null
+                  ? `Каждый месяц ${anchorDay}-го числа`
+                  : "Каждый месяц (этого числа)"}
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name={`${name}-monthly-mode`}
+                checked={rule.monthlyMode === "nthWeekday"}
+                onChange={() =>
+                  update({
+                    monthlyMode: "nthWeekday",
+                    weekOfMonth: rule.weekOfMonth ?? 1,
+                    daysOfWeek: rule.daysOfWeek.length
+                      ? [rule.daysOfWeek[0]]
+                      : [1],
+                  })
+                }
+                className="mt-1 accent-[var(--accent)]"
+              />
+              <span className="flex flex-col gap-2">
+                <span>Каждый месяц в</span>
+                {rule.monthlyMode === "nthWeekday" && (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={rule.weekOfMonth ?? 1}
+                      onChange={(e) =>
+                        update({ weekOfMonth: Number(e.target.value) })
+                      }
+                      className={cn(selectClass, "h-9 w-auto")}
+                    >
+                      {WEEK_OF_MONTH_OPTIONS.map((w) => (
+                        <option key={w.value} value={w.value}>
+                          {w.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={rule.daysOfWeek[0] ?? 1}
+                      onChange={(e) =>
+                        setSingleWeekday(Number(e.target.value))
+                      }
+                      className={cn(selectClass, "h-9 flex-1")}
+                    >
+                      {WEEKDAY_OPTIONS.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+                )}
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
       {showEnds && rule.preset !== "none" && (
-        <div className="space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-          <Label className="text-xs text-slate-500">Заканчивается</Label>
+        <div className="space-y-2 border border-[var(--border)] p-3">
+          <Label className="text-xs text-[var(--muted)]">Заканчивается</Label>
           <div className="space-y-2">
             {(
               [
@@ -145,7 +254,7 @@ export function RecurrencePicker({
                   name={`${name}-end`}
                   checked={rule.endType === value}
                   onChange={() => update({ endType: value as RecurrenceEndType })}
-                  className="accent-teal-600"
+                  className="accent-[var(--accent)]"
                 />
                 <span>{label}</span>
                 {value === "onDate" && rule.endType === "onDate" && (
@@ -168,7 +277,7 @@ export function RecurrencePicker({
                       }
                       className="h-9 w-16 text-center"
                     />
-                    <span className="text-xs text-slate-500">раз</span>
+                    <span className="text-xs text-[var(--muted)]">раз</span>
                   </span>
                 )}
               </label>

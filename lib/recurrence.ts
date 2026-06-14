@@ -12,12 +12,18 @@ export type RecurrenceUnit = "day" | "week" | "month" | "year";
 
 export type RecurrenceEndType = "never" | "onDate" | "afterCount";
 
+export type MonthlyMode = "dayOfMonth" | "nthWeekday";
+
 export type RecurrenceRule = {
   preset: RecurrencePreset;
   interval: number;
   unit: RecurrenceUnit;
   /** 0 = Sunday … 6 = Saturday */
   daysOfWeek: number[];
+  /** Для custom/monthly: по числу или по N-й день недели */
+  monthlyMode?: MonthlyMode;
+  /** 1–4 или -1 (последний) */
+  weekOfMonth?: number;
   endType: RecurrenceEndType;
   endDate?: string;
   endCount?: number;
@@ -28,6 +34,8 @@ export const DEFAULT_RECURRENCE: RecurrenceRule = {
   interval: 1,
   unit: "week",
   daysOfWeek: [1, 2, 3, 4, 5],
+  monthlyMode: "dayOfMonth",
+  weekOfMonth: 1,
   endType: "never",
 };
 
@@ -41,13 +49,21 @@ export const WEEKDAY_OPTIONS = [
   { value: 0, label: "Вс" },
 ] as const;
 
+export const WEEK_OF_MONTH_OPTIONS = [
+  { value: 1, label: "1-й" },
+  { value: 2, label: "2-й" },
+  { value: 3, label: "3-й" },
+  { value: 4, label: "4-й" },
+  { value: -1, label: "последний" },
+] as const;
+
 export const PRESET_OPTIONS: { value: RecurrencePreset; label: string }[] = [
   { value: "none", label: "Не повторяется" },
   { value: "daily", label: "Каждый день" },
   { value: "weekly", label: "Каждую неделю" },
   { value: "monthly", label: "Каждый месяц" },
   { value: "yearly", label: "Каждый год" },
-  { value: "custom", label: "Настроить…" },
+  { value: "custom", label: "Другое…" },
 ];
 
 export function parseRecurrenceRule(raw: unknown): RecurrenceRule {
@@ -58,6 +74,8 @@ export function parseRecurrenceRule(raw: unknown): RecurrenceRule {
     interval: Math.max(1, r.interval ?? 1),
     unit: r.unit ?? "week",
     daysOfWeek: Array.isArray(r.daysOfWeek) ? r.daysOfWeek : [1, 2, 3, 4, 5],
+    monthlyMode: r.monthlyMode ?? "dayOfMonth",
+    weekOfMonth: r.weekOfMonth ?? 1,
     endType: r.endType ?? "never",
     endDate: r.endDate,
     endCount: r.endCount,
@@ -96,15 +114,15 @@ export function ruleFromPreset(
     case "daily":
       return { ...base, preset: "daily", interval: 1, unit: "day" };
     case "weekly":
+      return { ...base, preset: "weekly", interval: 1, unit: "week" };
+    case "monthly":
       return {
         ...base,
-        preset: "weekly",
+        preset: "monthly",
         interval: 1,
-        unit: "week",
-        daysOfWeek: base.daysOfWeek.length ? base.daysOfWeek : [1, 2, 3, 4, 5],
+        unit: "month",
+        monthlyMode: "dayOfMonth",
       };
-    case "monthly":
-      return { ...base, preset: "monthly", interval: 1, unit: "month" };
     case "yearly":
       return { ...base, preset: "yearly", interval: 1, unit: "year" };
     case "custom":
@@ -120,12 +138,88 @@ function startOfDay(d: Date | string | number) {
   return x;
 }
 
+function monthsBetween(anchor: Date, date: Date): number {
+  return (
+    (date.getFullYear() - anchor.getFullYear()) * 12 +
+    (date.getMonth() - anchor.getMonth())
+  );
+}
+
+function yearsBetween(anchor: Date, date: Date): number {
+  return date.getFullYear() - anchor.getFullYear();
+}
+
+/** N-й день недели в месяце (weekOfMonth: 1–4 или -1 = последний) */
+export function getNthWeekdayInMonth(
+  year: number,
+  month: number,
+  weekOfMonth: number,
+  dayOfWeek: number
+): Date {
+  if (weekOfMonth === -1) {
+    const last = new Date(year, month + 1, 0);
+    while (last.getDay() !== dayOfWeek) {
+      last.setDate(last.getDate() - 1);
+    }
+    return startOfDay(last);
+  }
+
+  let count = 0;
+  const cursor = new Date(year, month, 1);
+  while (cursor.getMonth() === month) {
+    if (cursor.getDay() === dayOfWeek) {
+      count++;
+      if (count === weekOfMonth) return startOfDay(cursor);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return startOfDay(new Date(year, month, 1));
+}
+
+function weekdayLabel(day: number): string {
+  return WEEKDAY_OPTIONS.find((w) => w.value === day)?.label ?? "";
+}
+
+function weekOfMonthLabel(weekOfMonth: number): string {
+  return (
+    WEEK_OF_MONTH_OPTIONS.find((w) => w.value === weekOfMonth)?.label ??
+    `${weekOfMonth}-й`
+  );
+}
+
+function isMonthlyDue(
+  rule: RecurrenceRule,
+  dayDate: Date,
+  anchor: Date | undefined
+): boolean {
+  if (!anchor) {
+    return dayDate.getDate() === new Date().getDate();
+  }
+
+  const monthDiff = monthsBetween(startOfDay(anchor), dayDate);
+  if (monthDiff < 0 || monthDiff % rule.interval !== 0) return false;
+
+  if (rule.monthlyMode === "nthWeekday") {
+    const dow = rule.daysOfWeek[0] ?? anchor.getDay();
+    const wom = rule.weekOfMonth ?? 1;
+    const target = getNthWeekdayInMonth(
+      dayDate.getFullYear(),
+      dayDate.getMonth(),
+      wom,
+      dow
+    );
+    return startOfDay(dayDate).getTime() === target.getTime();
+  }
+
+  return dayDate.getDate() === anchor.getDate();
+}
+
 function isPastEnd(rule: RecurrenceRule, date: Date, startDate?: Date): boolean {
   if (rule.endType === "onDate" && rule.endDate) {
     return startOfDay(date) > startOfDay(new Date(rule.endDate));
   }
   if (rule.endType === "afterCount" && rule.endCount && startDate) {
-    // approximate: count occurrences from startDate to date
     let count = 0;
     let cursor = startOfDay(startDate);
     const limit = 500;
@@ -157,46 +251,45 @@ export function isDueOnDate(
   if (isPastEnd(rule, dayDate, anchor)) return false;
 
   const day = dayDate.getDay();
+  const diffDays = anchor
+    ? Math.floor(
+        (startOfDay(dayDate).getTime() - startOfDay(anchor).getTime()) / 86400000
+      )
+    : 0;
 
   switch (rule.preset) {
     case "daily":
       if (!anchor) return true;
-      return (
-        Math.floor(
-          (startOfDay(dayDate).getTime() - startOfDay(anchor).getTime()) /
-            86400000
-        ) %
-          rule.interval ===
-        0
-      );
+      return diffDays >= 0 && diffDays % rule.interval === 0;
     case "weekly":
-      return rule.daysOfWeek.includes(day);
+      if (!anchor) return rule.daysOfWeek.includes(day);
+      if (day !== anchor.getDay()) return false;
+      if (diffDays < 0) return false;
+      return Math.floor(diffDays / 7) % rule.interval === 0;
     case "monthly":
-      if (!anchor) return dayDate.getDate() === new Date().getDate();
-      return dayDate.getDate() === anchor.getDate();
+      return isMonthlyDue(rule, dayDate, anchor);
     case "yearly":
       if (!anchor) return false;
+      if (yearsBetween(anchor, dayDate) < 0) return false;
+      if (yearsBetween(anchor, dayDate) % rule.interval !== 0) return false;
       return (
         dayDate.getMonth() === anchor.getMonth() &&
         dayDate.getDate() === anchor.getDate()
       );
     case "custom": {
-      if (!anchor) return rule.unit === "day";
-      const diffDays = Math.floor(
-        (startOfDay(dayDate).getTime() - startOfDay(anchor).getTime()) / 86400000
-      );
+      if (!anchor) {
+        if (rule.unit === "week") return rule.daysOfWeek.includes(day);
+        return rule.unit === "day";
+      }
       if (diffDays < 0) return false;
       if (rule.unit === "day") return diffDays % rule.interval === 0;
       if (rule.unit === "week") {
-        if (diffDays % (7 * rule.interval) !== 0 && rule.daysOfWeek.length) {
-          return rule.daysOfWeek.includes(day);
-        }
-        return rule.daysOfWeek.length
-          ? rule.daysOfWeek.includes(day)
-          : diffDays % (7 * rule.interval) === 0;
+        if (!rule.daysOfWeek.includes(day)) return false;
+        return Math.floor(diffDays / 7) % rule.interval === 0;
       }
-      if (rule.unit === "month") return dayDate.getDate() === anchor.getDate();
+      if (rule.unit === "month") return isMonthlyDue(rule, dayDate, anchor);
       if (rule.unit === "year") {
+        if (yearsBetween(anchor, dayDate) % rule.interval !== 0) return false;
         return (
           dayDate.getMonth() === anchor.getMonth() &&
           dayDate.getDate() === anchor.getDate()
@@ -244,25 +337,53 @@ export function formatRecurrenceLabel(rule: RecurrenceRule): string {
   let main = "";
   switch (rule.preset) {
     case "daily":
-      main = rule.interval === 1 ? "Каждый день" : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.day)}`;
+      main =
+        rule.interval === 1
+          ? "Каждый день"
+          : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.day)}`;
       break;
-    case "weekly": {
-      const days = rule.daysOfWeek
-        .map((d) => WEEKDAY_OPTIONS.find((w) => w.value === d)?.label)
-        .filter(Boolean)
-        .join(", ");
-      main = days ? `Каждую неделю: ${days}` : "Каждую неделю";
+    case "weekly":
+      main =
+        rule.interval === 1
+          ? "Каждую неделю"
+          : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.week)}`;
       break;
-    }
     case "monthly":
-      main = rule.interval === 1 ? "Каждый месяц" : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)}`;
+      if (rule.monthlyMode === "nthWeekday") {
+        const dow = rule.daysOfWeek[0];
+        main = `Каждый месяц в ${weekOfMonthLabel(rule.weekOfMonth ?? 1)} ${weekdayLabel(dow)}`;
+      } else {
+        main =
+          rule.interval === 1
+            ? "Каждый месяц (этого числа)"
+            : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} (этого числа)`;
+      }
       break;
     case "yearly":
-      main = rule.interval === 1 ? "Каждый год" : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)}`;
+      main =
+        rule.interval === 1
+          ? "Каждый год"
+          : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)}`;
       break;
-    case "custom":
-      main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS[rule.unit])}`;
+    case "custom": {
+      if (rule.unit === "week") {
+        const days = rule.daysOfWeek
+          .map((d) => weekdayLabel(d))
+          .filter(Boolean)
+          .join(", ");
+        main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.week)}${days ? `: ${days}` : ""}`;
+      } else if (rule.unit === "month") {
+        if (rule.monthlyMode === "nthWeekday") {
+          const dow = rule.daysOfWeek[0];
+          main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} в ${weekOfMonthLabel(rule.weekOfMonth ?? 1)} ${weekdayLabel(dow)}`;
+        } else {
+          main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} (этого числа)`;
+        }
+      } else {
+        main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS[rule.unit])}`;
+      }
       break;
+    }
   }
 
   if (rule.endType === "onDate" && rule.endDate) {

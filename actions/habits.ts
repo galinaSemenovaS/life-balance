@@ -21,6 +21,7 @@ function endDateFromRule(rule: RecurrenceRule): Date | undefined {
 
 export async function createHabit(data: {
   title: string;
+  description?: string;
   goalId: string;
   reminderTime?: string;
   reminderEnabled?: boolean;
@@ -43,6 +44,7 @@ export async function createHabit(data: {
     data: {
       userId: user.id,
       title: data.title,
+      description: data.description,
       sphereId: goal.sphereId,
       goalId: goal.id,
       reminderEnabled: data.reminderEnabled ?? false,
@@ -91,6 +93,8 @@ export async function toggleHabitLog(
 export async function updateHabitSettings(
   habitId: string,
   data: {
+    title?: string;
+    description?: string;
     reminderTime?: string | null;
     reminderEnabled?: boolean;
     recurrenceJson?: string;
@@ -100,6 +104,11 @@ export async function updateHabitSettings(
   const user = await requireUser();
   if (data.timezone) await ensureUserTimezone(data.timezone);
 
+  const habit = await prisma.habit.findFirst({
+    where: { id: habitId, userId: user.id },
+  });
+  if (!habit) throw new Error("Habit not found");
+
   const rule = data.recurrenceJson
     ? parseRecurrenceJson(JSON.parse(data.recurrenceJson))
     : null;
@@ -107,6 +116,10 @@ export async function updateHabitSettings(
   await prisma.habit.updateMany({
     where: { id: habitId, userId: user.id },
     data: {
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.description !== undefined
+        ? { description: data.description || null }
+        : {}),
       ...(rule
         ? {
             frequency: recurrenceToFrequency(rule),
@@ -119,6 +132,23 @@ export async function updateHabitSettings(
         data.reminderEnabled && data.reminderTime ? data.reminderTime : null,
     },
   });
+
+  revalidateUserData(user.id);
+}
+
+export async function deleteHabit(habitId: string) {
+  const user = await requireUser();
+
+  const habit = await prisma.habit.findFirst({
+    where: { id: habitId, userId: user.id },
+    select: { id: true },
+  });
+  if (!habit) throw new Error("Habit not found");
+
+  await prisma.$transaction([
+    prisma.habitLog.deleteMany({ where: { habitId } }),
+    prisma.habit.delete({ where: { id: habitId } }),
+  ]);
 
   revalidateUserData(user.id);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { createGoal, createTask } from "@/actions/goals";
 import { createHabit } from "@/actions/habits";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,7 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
             try {
               await createHabit({
                 title: formData.get("title") as string,
+                description: (formData.get("description") as string) || undefined,
                 goalId,
                 reminderEnabled: formData.get("reminderEnabled") === "1",
                 reminderTime: (formData.get("reminderTime") as string) || undefined,
@@ -92,12 +93,23 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
             placeholder="Например: 10 минут медитации"
           />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="habit-description">Описание</Label>
+          <Textarea
+            id="habit-description"
+            name="description"
+            placeholder="Зачем эта привычка?"
+            rows={2}
+          />
+        </div>
         <RecurrencePicker
           defaultValue={{
             preset: "daily",
             interval: 1,
             unit: "day",
             daysOfWeek: [1, 2, 3, 4, 5],
+            monthlyMode: "dayOfMonth",
+            weekOfMonth: 1,
             endType: "never",
           }}
         />
@@ -112,6 +124,7 @@ export function CreateHabitForm({ goalId }: { goalId: string }) {
 
 export function CreateTaskForm({ goalId }: { goalId: string }) {
   const [pending, startTransition] = useTransition();
+  const [dueDate, setDueDate] = useState("");
 
   return (
     <CollapsibleForm label="Добавить задачу">
@@ -142,9 +155,15 @@ export function CreateTaskForm({ goalId }: { goalId: string }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="dueDate">Дата</Label>
-          <Input id="dueDate" name="dueDate" type="date" />
+          <Input
+            id="dueDate"
+            name="dueDate"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
         </div>
-        <RecurrencePicker />
+        <RecurrencePicker anchorDate={dueDate || null} />
         <ItemReminderFields />
         <Button type="submit" className="w-full" disabled={pending}>
           Добавить задачу
