@@ -13,6 +13,11 @@ import { CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sectionLabel } from "@/lib/ui-classes";
 import { parseDateKey, toDateKey } from "@/lib/date-key";
+import {
+  sortChecklist,
+  toggleChecklistItem,
+  withChecklistOrder,
+} from "@/lib/checklist-order";
 import { addDays, format, isSameDay, startOfDay, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -24,6 +29,7 @@ type HabitItem = {
   recurrenceLabel?: string;
   color?: string;
   completed: boolean;
+  order: number;
 };
 
 type TaskItem = {
@@ -32,6 +38,7 @@ type TaskItem = {
   goalTitle: string;
   recurrenceLabel?: string;
   completed: boolean;
+  order: number;
 };
 
 type OverdueTaskItem = {
@@ -170,14 +177,18 @@ export function TodayList({
   backlogCount = 0,
 }: {
   selectedDate: string;
-  habits: HabitItem[];
-  tasks: TaskItem[];
+  habits: Omit<HabitItem, "order">[];
+  tasks: Omit<TaskItem, "order">[];
   overdueTasks?: OverdueTaskItem[];
   backlogCount?: number;
 }) {
   const router = useRouter();
-  const [habits, setHabits] = useState(initialHabits);
-  const [tasks, setTasks] = useState(initialTasks);
+  const [habits, setHabits] = useState<HabitItem[]>(() =>
+    sortChecklist(withChecklistOrder(initialHabits))
+  );
+  const [tasks, setTasks] = useState<TaskItem[]>(() =>
+    sortChecklist(withChecklistOrder(initialTasks))
+  );
   const [overdueTasks, setOverdueTasks] = useState(initialOverdueTasks);
   const [pending, startTransition] = useTransition();
 
@@ -188,8 +199,8 @@ export function TodayList({
   const canGoBack = day > subDays(today, 60);
 
   useEffect(() => {
-    setHabits(initialHabits);
-    setTasks(initialTasks);
+    setHabits(sortChecklist(withChecklistOrder(initialHabits)));
+    setTasks(sortChecklist(withChecklistOrder(initialTasks)));
     setOverdueTasks(initialOverdueTasks);
   }, [initialHabits, initialTasks, initialOverdueTasks, selectedDate]);
 
@@ -203,23 +214,31 @@ export function TodayList({
   const total = habits.length + tasks.length;
   const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
 
-  const pendingTasks = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
   const isEmpty =
     habits.length === 0 && tasks.length === 0 && overdueTasks.length === 0;
 
   const dateISO = toDateKey(day);
 
   const toggleTaskItem = (taskId: string, completed: boolean) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
-    );
+    setTasks((prev) => toggleChecklistItem(prev, taskId, completed));
     startTransition(async () => {
       try {
         await toggleTask(taskId, completed, dateISO);
         router.refresh();
       } catch {
-        setTasks(initialTasks);
+        setTasks(sortChecklist(withChecklistOrder(initialTasks)));
+      }
+    });
+  };
+
+  const toggleHabitItem = (habitId: string, completed: boolean) => {
+    setHabits((prev) => toggleChecklistItem(prev, habitId, completed));
+    startTransition(async () => {
+      try {
+        await toggleHabitLog(habitId, completed, dateISO);
+        router.refresh();
+      } catch {
+        setHabits(sortChecklist(withChecklistOrder(initialHabits)));
       }
     });
   };
@@ -360,22 +379,9 @@ export function TodayList({
                   <Checkbox
                     checked={habit.completed}
                     disabled={pending}
-                    onCheckedChange={(checked) => {
-                      const completed = checked === true;
-                      setHabits((prev) =>
-                        prev.map((h) =>
-                          h.id === habit.id ? { ...h, completed } : h
-                        )
-                      );
-                      startTransition(async () => {
-                        try {
-                          await toggleHabitLog(habit.id, completed, dateISO);
-                          router.refresh();
-                        } catch {
-                          setHabits(initialHabits);
-                        }
-                      });
-                    }}
+                    onCheckedChange={(checked) =>
+                      toggleHabitItem(habit.id, checked === true)
+                    }
                   />
                   <div className="min-w-0 flex-1">
                     <p
@@ -412,7 +418,7 @@ export function TodayList({
           {tasks.length > 0 && (
             <section className="space-y-2">
               <h2 className={sectionLabel}>Задачи</h2>
-              {pendingTasks.map((task) => (
+              {tasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -420,19 +426,6 @@ export function TodayList({
                   onToggle={(completed) => toggleTaskItem(task.id, completed)}
                 />
               ))}
-              {completedTasks.length > 0 && (
-                <div className="space-y-2 pt-3">
-                  <p className={sectionLabel}>Выполнено</p>
-                  {completedTasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      pending={pending}
-                      onToggle={(completed) => toggleTaskItem(task.id, completed)}
-                    />
-                  ))}
-                </div>
-              )}
             </section>
           )}
         </>

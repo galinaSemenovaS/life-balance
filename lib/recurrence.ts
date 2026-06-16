@@ -188,6 +188,24 @@ function weekOfMonthLabel(weekOfMonth: number): string {
   );
 }
 
+function formatDayOfMonth(day: number): string {
+  return `${day}-го числа`;
+}
+
+function formatYearlyDate(anchor: Date): string {
+  return anchor.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function monthlyByDayLabel(interval: number, day: number | null): string {
+  const dayPart =
+    day != null ? ` ${formatDayOfMonth(day)}` : " — укажите дату";
+  if (interval === 1) return `Каждый месяц${dayPart}`;
+  return `Каждые ${interval} ${plural(interval, UNIT_LABELS.month)}${dayPart}`;
+}
+
 function isMonthlyDue(
   rule: RecurrenceRule,
   dayDate: Date,
@@ -329,8 +347,19 @@ function plural(n: number, forms: [string, string, string]) {
   return forms[2];
 }
 
-export function formatRecurrenceLabel(rule: RecurrenceRule): string {
+export function formatRecurrenceLabel(
+  rule: RecurrenceRule,
+  anchorDate?: Date | string | null
+): string {
   if (rule.preset === "none") return "Не повторяется";
+
+  const anchor =
+    anchorDate != null && anchorDate !== ""
+      ? coerceDate(anchorDate)
+      : null;
+  const anchorValid =
+    anchor && !Number.isNaN(anchor.getTime()) ? anchor : null;
+  const monthDay = anchorValid ? anchorValid.getDate() : null;
 
   let main = "";
   switch (rule.preset) {
@@ -340,28 +369,43 @@ export function formatRecurrenceLabel(rule: RecurrenceRule): string {
           ? "Каждый день"
           : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.day)}`;
       break;
-    case "weekly":
-      main =
+    case "weekly": {
+      const days = rule.daysOfWeek
+        .map((d) => weekdayLabel(d))
+        .filter(Boolean)
+        .join(", ");
+      const weekBase =
         rule.interval === 1
           ? "Каждую неделю"
           : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.week)}`;
+      main = days ? `${weekBase}: ${days}` : weekBase;
       break;
+    }
     case "monthly":
       if (rule.monthlyMode === "nthWeekday") {
         const dow = rule.daysOfWeek[0];
-        main = `Каждый месяц в ${weekOfMonthLabel(rule.weekOfMonth ?? 1)} ${weekdayLabel(dow)}`;
-      } else {
+        const nth = `в ${weekOfMonthLabel(rule.weekOfMonth ?? 1)} ${weekdayLabel(dow)}`;
         main =
           rule.interval === 1
-            ? "Каждый месяц (этого числа)"
-            : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} (этого числа)`;
+            ? `Каждый месяц ${nth}`
+            : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} ${nth}`;
+      } else {
+        main = monthlyByDayLabel(rule.interval, monthDay);
       }
       break;
     case "yearly":
-      main =
-        rule.interval === 1
-          ? "Каждый год"
-          : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)}`;
+      if (anchorValid) {
+        const onDate = formatYearlyDate(anchorValid);
+        main =
+          rule.interval === 1
+            ? `Каждый год ${onDate}`
+            : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)} ${onDate}`;
+      } else {
+        main =
+          rule.interval === 1
+            ? "Каждый год"
+            : `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)}`;
+      }
       break;
     case "custom": {
       if (rule.unit === "week") {
@@ -375,8 +419,10 @@ export function formatRecurrenceLabel(rule: RecurrenceRule): string {
           const dow = rule.daysOfWeek[0];
           main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} в ${weekOfMonthLabel(rule.weekOfMonth ?? 1)} ${weekdayLabel(dow)}`;
         } else {
-          main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.month)} (этого числа)`;
+          main = monthlyByDayLabel(rule.interval, monthDay);
         }
+      } else if (rule.unit === "year" && anchorValid) {
+        main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS.year)} ${formatYearlyDate(anchorValid)}`;
       } else {
         main = `Каждые ${rule.interval} ${plural(rule.interval, UNIT_LABELS[rule.unit])}`;
       }

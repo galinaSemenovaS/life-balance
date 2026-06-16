@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, coerceDate } from "@/lib/utils";
 import {
   DEFAULT_RECURRENCE,
   PRESET_OPTIONS,
@@ -74,10 +74,12 @@ export function RecurrencePicker({
     rule.preset === "custom" && rule.unit === "month";
   const showCustomInterval = rule.preset === "custom";
 
-  const anchorDay =
-    anchorDate != null && anchorDate !== ""
-      ? new Date(anchorDate).getDate()
-      : null;
+  const anchorDay = anchorDate
+    ? (() => {
+        const d = coerceDate(anchorDate);
+        return Number.isNaN(d.getTime()) ? null : d.getDate();
+      })()
+    : null;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -96,12 +98,9 @@ export function RecurrencePicker({
             </option>
           ))}
         </select>
-        <p className="text-xs text-[var(--muted)]">{formatRecurrenceLabel(rule)}</p>
-        {rule.preset === "monthly" && anchorDay != null && rule.monthlyMode !== "nthWeekday" ? (
-          <p className="text-xs text-[var(--muted)]">
-            Повтор каждый месяц {anchorDay}-го числа
-          </p>
-        ) : null}
+        <p className="text-xs text-[var(--muted)]">
+          {formatRecurrenceLabel(rule, anchorDate)}
+        </p>
       </div>
 
       {showCustomInterval && (
@@ -177,7 +176,7 @@ export function RecurrencePicker({
               <span>
                 {anchorDay != null
                   ? `Каждый месяц ${anchorDay}-го числа`
-                  : "Каждый месяц (этого числа)"}
+                  : "Каждый месяц — укажите дату"}
               </span>
             </label>
             <label className="flex cursor-pointer items-start gap-2 text-sm">

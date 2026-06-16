@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { toggleTask } from "@/actions/goals";
 import { Button } from "@/components/ui/button";
@@ -15,29 +15,65 @@ import { GoalEditForm } from "@/components/goals/GoalEditForm";
 import { HabitSettingsForm } from "@/components/goals/HabitSettingsForm";
 import { TaskSettingsForm } from "@/components/goals/TaskSettingsForm";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
+import { getRecurrenceAnchor } from "@/lib/progress";
 import { sectionLabel } from "@/lib/ui-classes";
 import { ArrowLeft } from "lucide-react";
 import { getGoalProgress } from "@/lib/progress";
 import { cn } from "@/lib/utils";
+import {
+  sortChecklist,
+  toggleChecklistItem,
+  withChecklistOrder,
+} from "@/lib/checklist-order";
 
 type Task = {
   id: string;
   title: string;
   status: string;
   dueDate: string | null;
+  createdAt: string;
   recurrence: unknown;
   reminderTime: string | null;
   reminderEnabled: boolean;
+  order: number;
 };
 type Habit = {
   id: string;
   title: string;
   description: string | null;
+  createdAt: string;
   reminderTime: string | null;
   reminderEnabled: boolean;
   schedule: unknown;
   endDate: string | null;
 };
+
+function tasksFromProps(items: Omit<Task, "order">[]): Task[] {
+  const ordered = withChecklistOrder(
+    items.map((t) => ({
+      ...t,
+      completed: t.status === "COMPLETED",
+    }))
+  );
+  return sortChecklist(ordered).map(({ completed, ...t }) => ({
+    ...t,
+    status: completed ? "COMPLETED" : "PENDING",
+  }));
+}
+
+function toggleGoalTask(tasks: Task[], id: string, completed: boolean): Task[] {
+  return toggleChecklistItem(
+    tasks.map((t) => ({
+      ...t,
+      completed: t.status === "COMPLETED",
+    })),
+    id,
+    completed
+  ).map(({ completed: done, ...t }) => ({
+    ...t,
+    status: done ? "COMPLETED" : "PENDING",
+  }));
+}
 
 function metaLine(parts: (string | null | undefined)[]) {
   return parts.filter(Boolean).join(" · ");
@@ -77,7 +113,13 @@ function TaskRow({
               task.dueDate
                 ? new Date(task.dueDate).toLocaleDateString("ru-RU")
                 : null,
-              formatRecurrenceLabel(parseRecurrenceJson(task.recurrence)),
+              formatRecurrenceLabel(
+                parseRecurrenceJson(task.recurrence),
+                getRecurrenceAnchor({
+                  dueDate: task.dueDate ? new Date(task.dueDate) : null,
+                  createdAt: new Date(task.createdAt),
+                })
+              ),
               task.reminderEnabled && task.reminderTime
                 ? `push ${task.reminderTime}`
                 : null,
@@ -99,7 +141,7 @@ function TaskRow({
 
 export function GoalDetail({
   goal,
-  tasks,
+  tasks: initialTasks,
   habits,
   sphereId,
 }: {
@@ -111,13 +153,19 @@ export function GoalDetail({
     deadline: string | null;
     sphere: { name: string; color: string };
   };
-  tasks: Task[];
+  tasks: Omit<Task, "order">[];
   habits: Habit[];
   sphereId: string;
 }) {
+  const [taskItems, setTaskItems] = useState(() => tasksFromProps(initialTasks));
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setTaskItems(tasksFromProps(initialTasks));
+  }, [initialTasks]);
+
   const progress = getGoalProgress(
-    tasks.map((t) => ({ status: t.status as "PENDING" | "COMPLETED" }))
+    taskItems.map((t) => ({ status: t.status as "PENDING" | "COMPLETED" }))
   );
 
   return (
@@ -159,19 +207,24 @@ export function GoalDetail({
 
       <section className="space-y-3">
         <h2 className={sectionLabel}>Задачи</h2>
-        {tasks.length === 0 ? (
+        {taskItems.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">Пока нет задач</p>
         ) : (
-          tasks.map((task) => (
+          taskItems.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
               pending={pending}
-              onToggle={(completed) =>
+              onToggle={(completed) => {
+                setTaskItems((prev) => toggleGoalTask(prev, task.id, completed));
                 startTransition(async () => {
-                  await toggleTask(task.id, completed);
-                })
-              }
+                  try {
+                    await toggleTask(task.id, completed);
+                  } catch {
+                    setTaskItems(tasksFromProps(initialTasks));
+                  }
+                });
+              }}
             />
           ))
         )}
@@ -194,7 +247,10 @@ export function GoalDetail({
                 ) : null}
                 <p className="mt-0.5 text-xs text-[var(--muted)]">
                   {metaLine([
-                    formatRecurrenceLabel(parseRecurrenceJson(habit.schedule)),
+                    formatRecurrenceLabel(
+                      parseRecurrenceJson(habit.schedule),
+                      habit.createdAt
+                    ),
                     habit.reminderEnabled && habit.reminderTime
                       ? `push ${habit.reminderTime}`
                       : null,

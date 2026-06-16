@@ -1,5 +1,6 @@
 import { getCachedTodayData } from "@/lib/data/queries";
 import {
+  getRecurrenceAnchor,
   isHabitDueOnDate,
   isRecurringTask,
   isTaskBacklog,
@@ -61,7 +62,10 @@ export default async function TodayPage({
         title: h.title,
         sphereName: h.sphere?.name,
         goalTitle: h.goal?.title,
-        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(h.schedule)),
+        recurrenceLabel: formatRecurrenceLabel(
+          parseRecurrenceJson(h.schedule),
+          h.createdAt
+        ),
         color: h.sphere?.color,
         completed: h.logs.some((l) => l.completed),
       }))}
@@ -69,14 +73,20 @@ export default async function TodayPage({
         id: t.id,
         title: t.title,
         goalTitle: t.goal.title,
-        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(t.recurrence)),
+        recurrenceLabel: formatRecurrenceLabel(
+          parseRecurrenceJson(t.recurrence),
+          getRecurrenceAnchor(t)
+        ),
         completed: isTaskCompletedOnDate(t, t.logs, selectedDate),
       }))}
       overdueTasks={overdueTasks.map((t) => ({
         id: t.id,
         title: t.title,
         goalTitle: t.goal.title,
-        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(t.recurrence)),
+        recurrenceLabel: formatRecurrenceLabel(
+          parseRecurrenceJson(t.recurrence),
+          getRecurrenceAnchor(t)
+        ),
         overdueDate: t.dueDate!.toISOString(),
         isRecurring: isRecurringTask(t),
       }))}
