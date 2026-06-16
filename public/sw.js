@@ -1,3 +1,11 @@
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -6,7 +14,6 @@ self.addEventListener("push", (event) => {
     body: "",
     url: "/today",
     silent: false,
-    vibrate: true,
   };
   try {
     data = { ...data, ...event.data.json() };
@@ -17,10 +24,10 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: "/icons/icon-192.png",
-      badge: "/icons/badge-96.png",
+      icon: "/icons/notification-icon-96.png",
+      image: "/icons/icon-192.png",
       silent: data.silent === true,
-      vibrate: data.vibrate ? [200, 100, 200, 100, 200] : undefined,
+      vibrate: [300, 100, 300, 100, 300],
       tag: data.url || "life-balance",
       renotify: true,
       data: { url: data.url },

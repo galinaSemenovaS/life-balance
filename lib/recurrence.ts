@@ -259,14 +259,15 @@ export function isDueOnDate(
 
   switch (rule.preset) {
     case "daily":
-      if (!anchor) return true;
+      if (!anchor) return false;
       return diffDays >= 0 && diffDays % rule.interval === 0;
     case "weekly":
-      if (!anchor) return rule.daysOfWeek.includes(day);
-      if (day !== anchor.getDay()) return false;
+      if (!anchor) return false;
+      if (!rule.daysOfWeek.includes(day)) return false;
       if (diffDays < 0) return false;
       return Math.floor(diffDays / 7) % rule.interval === 0;
     case "monthly":
+      if (!anchor) return false;
       return isMonthlyDue(rule, dayDate, anchor);
     case "yearly":
       if (!anchor) return false;
@@ -277,10 +278,7 @@ export function isDueOnDate(
         dayDate.getDate() === anchor.getDate()
       );
     case "custom": {
-      if (!anchor) {
-        if (rule.unit === "week") return rule.daysOfWeek.includes(day);
-        return rule.unit === "day";
-      }
+      if (!anchor) return false;
       if (diffDays < 0) return false;
       if (rule.unit === "day") return diffDays % rule.interval === 0;
       if (rule.unit === "week") {

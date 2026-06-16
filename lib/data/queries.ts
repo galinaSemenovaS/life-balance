@@ -99,8 +99,8 @@ export function getCachedSpheresPageData(userId: string) {
   )();
 }
 
-async function fetchTodayData(userId: string) {
-  const today = startOfDay(new Date());
+async function fetchTodayData(userId: string, forDate: Date) {
+  const day = startOfDay(forDate);
 
   const [habits, tasks] = await Promise.all([
     prisma.habit.findMany({
@@ -112,10 +112,11 @@ async function fetchTodayData(userId: string) {
         schedule: true,
         endDate: true,
         isActive: true,
+        createdAt: true,
         sphere: { select: { name: true, color: true } },
         goal: { select: { title: true } },
         logs: {
-          where: { date: today },
+          where: { date: day },
           select: { completed: true, date: true },
         },
       },
@@ -130,7 +131,12 @@ async function fetchTodayData(userId: string) {
         status: true,
         dueDate: true,
         recurrence: true,
+        createdAt: true,
         goal: { select: { title: true } },
+        logs: {
+          where: { date: day },
+          select: { completed: true, date: true },
+        },
       },
     }),
   ]);
@@ -138,10 +144,10 @@ async function fetchTodayData(userId: string) {
   return { habits, tasks };
 }
 
-export function getCachedTodayData(userId: string) {
+export function getCachedTodayData(userId: string, dateKey: string) {
   return unstable_cache(
-    () => fetchTodayData(userId),
-    ["today", userId],
+    () => fetchTodayData(userId, startOfDay(new Date(dateKey))),
+    ["today", userId, dateKey],
     cacheOpts(userId, CACHE_TAGS.today)
   )();
 }
@@ -171,6 +177,7 @@ async function fetchDashboardData(userId: string) {
         schedule: true,
         endDate: true,
         isActive: true,
+        createdAt: true,
         logs: {
           where: { date: { gte: monthAgo } },
           select: { date: true, completed: true },
@@ -187,6 +194,11 @@ async function fetchDashboardData(userId: string) {
         status: true,
         dueDate: true,
         recurrence: true,
+        createdAt: true,
+        logs: {
+          where: { date: today },
+          select: { date: true, completed: true },
+        },
       },
     }),
   ]);

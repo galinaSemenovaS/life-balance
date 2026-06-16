@@ -14,10 +14,16 @@ const SEGMENTS = [
 type AppLogoProps = {
   size?: number;
   className?: string;
+  /** Показать тёплый фон как у иконки приложения */
+  withBackground?: boolean;
 };
 
-/** Круглое колесо баланса без белого фона */
-export function AppLogo({ size = 80, className }: AppLogoProps) {
+/** Колесо баланса — editorial earth tones */
+export function AppLogo({
+  size = 80,
+  className,
+  withBackground = false,
+}: AppLogoProps) {
   const cx = 48;
   const cy = 48;
   const outerR = 40;
@@ -42,8 +48,8 @@ export function AppLogo({ size = 80, className }: AppLogoProps) {
         key={fill + index}
         d={`M ${x1} ${y1} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x4} ${y4} Z`}
         fill={fill}
-        stroke="white"
-        strokeWidth="1.5"
+        stroke="#D8D2C8"
+        strokeWidth="1"
         strokeLinejoin="round"
       />
     );
@@ -58,16 +64,19 @@ export function AppLogo({ size = 80, className }: AppLogoProps) {
       aria-label="Life Balance"
       className={cn("shrink-0", className)}
     >
+      {withBackground ? (
+        <rect width="96" height="96" rx="20" fill="#F3EFE6" />
+      ) : null}
       {wedges}
       <circle
         cx={cx}
         cy={cy}
         r={outerR}
         fill="none"
-        stroke="white"
-        strokeWidth="2"
-        opacity="0.9"
+        stroke="#D8D2C8"
+        strokeWidth="1.5"
       />
+      <circle cx={cx} cy={cy} r={6} fill="#D4A017" />
     </svg>
   );
 }

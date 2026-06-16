@@ -36,7 +36,7 @@ export default async function LoginPage({
     <div className="app-shell-bg flex min-h-dvh items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <AppLogo size={80} className="mb-4" />
+          <AppLogo size={80} withBackground className="mb-4" />
           <CardTitle className="font-display text-2xl">{APP_TITLE_RU}</CardTitle>
           <CardDescription>
             Оцени сферы жизни, ставь цели и отслеживай привычки каждый день

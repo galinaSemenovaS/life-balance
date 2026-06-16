@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sendPushNotification } from "@/lib/push";
+import { isHabitDueOnDate, isTaskDueOnDate } from "@/lib/progress";
 import {
   DEFAULT_TIMEZONE,
   isReminderInWindow,
@@ -7,6 +8,7 @@ import {
   wasReminderSentRecently,
 } from "@/lib/reminders";
 import { NextResponse } from "next/server";
+import { startOfDay } from "date-fns";
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -15,6 +17,7 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
+  const today = startOfDay(now);
   let habitsSent = 0;
   let tasksSent = 0;
   let wheelSent = 0;
@@ -25,7 +28,15 @@ export async function GET(req: Request) {
       reminderEnabled: true,
       reminderTime: { not: null },
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      frequency: true,
+      schedule: true,
+      endDate: true,
+      createdAt: true,
+      reminderTime: true,
+      lastReminderAt: true,
       user: {
         include: {
           pushSubscriptions: true,
@@ -42,6 +53,7 @@ export async function GET(req: Request) {
     if (!habit.reminderTime) continue;
     if (!isReminderInWindow(habit.reminderTime, now, tz)) continue;
     if (wasReminderSentRecently(habit.lastReminderAt, now)) continue;
+    if (!isHabitDueOnDate(habit, today)) continue;
 
     let sent = false;
     for (const sub of habit.user.pushSubscriptions) {
@@ -72,7 +84,14 @@ export async function GET(req: Request) {
       reminderTime: { not: null },
       status: "PENDING",
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      dueDate: true,
+      recurrence: true,
+      createdAt: true,
+      reminderTime: true,
+      lastReminderAt: true,
       goal: {
         include: {
           user: {
@@ -94,6 +113,7 @@ export async function GET(req: Request) {
     if (!task.reminderTime) continue;
     if (!isReminderInWindow(task.reminderTime, now, tz)) continue;
     if (wasReminderSentRecently(task.lastReminderAt, now)) continue;
+    if (!isTaskDueOnDate(task, today)) continue;
 
     let sent = false;
     for (const sub of user.pushSubscriptions) {

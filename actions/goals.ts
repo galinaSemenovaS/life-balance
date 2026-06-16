@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { startOfDay, isSameDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
@@ -181,7 +182,11 @@ export async function createTask(data: {
       goalId: data.goalId,
       planStepId: data.planStepId,
       title: data.title,
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      dueDate: data.dueDate
+        ? startOfDay(new Date(data.dueDate))
+        : rule.preset !== "none"
+          ? startOfDay(new Date())
+          : undefined,
       recurrence: rule.preset !== "none" ? (rule as object) : undefined,
       reminderTime: data.reminderEnabled ? data.reminderTime : undefined,
       reminderEnabled: data.reminderEnabled ?? false,
@@ -244,24 +249,43 @@ export async function deleteTask(taskId: string) {
   revalidateUserData(user.id);
 }
 
-export async function toggleTask(taskId: string, completed: boolean) {
+export async function toggleTask(
+  taskId: string,
+  completed: boolean,
+  date?: string
+) {
   const user = await requireUser();
   const task = await prisma.task.findFirst({
     where: { id: taskId, goal: { userId: user.id } },
   });
   if (!task) throw new Error("Task not found");
 
+  const logDate = startOfDay(date ? new Date(date) : new Date());
   const rule = parseRecurrenceJson(task.recurrence);
+  const isRecurring = rule.preset !== "none";
 
-  if (completed && rule.preset !== "none") {
-    const next = getNextOccurrence(rule, task.dueDate ?? new Date());
-    await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        status: "PENDING",
-        dueDate: next ?? task.dueDate,
-      },
-    });
+  if (isRecurring) {
+    if (completed) {
+      await prisma.taskLog.upsert({
+        where: { taskId_date: { taskId, date: logDate } },
+        create: { taskId, date: logDate, completed: true },
+        update: { completed: true },
+      });
+      if (task.dueDate && isSameDay(logDate, task.dueDate)) {
+        const next = getNextOccurrence(rule, task.dueDate);
+        await prisma.task.update({
+          where: { id: taskId },
+          data: {
+            status: "PENDING",
+            dueDate: next ?? task.dueDate,
+          },
+        });
+      }
+    } else {
+      await prisma.taskLog.deleteMany({
+        where: { taskId, date: logDate },
+      });
+    }
   } else {
     await prisma.task.update({
       where: { id: taskId },

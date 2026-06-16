@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toggleHabitLog } from "@/actions/habits";
 import { toggleTask } from "@/actions/goals";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sectionLabel } from "@/lib/ui-classes";
+import { addDays, format, isSameDay, startOfDay, subDays } from "date-fns";
+import { ru } from "date-fns/locale";
 
 type HabitItem = {
   id: string;
@@ -87,20 +91,34 @@ function TaskRow({
 }
 
 export function TodayList({
+  selectedDate,
   habits: initialHabits,
   tasks: initialTasks,
 }: {
+  selectedDate: string;
   habits: HabitItem[];
   tasks: TaskItem[];
 }) {
+  const router = useRouter();
   const [habits, setHabits] = useState(initialHabits);
   const [tasks, setTasks] = useState(initialTasks);
   const [pending, startTransition] = useTransition();
 
+  const day = startOfDay(new Date(selectedDate));
+  const today = startOfDay(new Date());
+  const isToday = isSameDay(day, today);
+  const canGoForward = !isToday;
+  const canGoBack = day > subDays(today, 60);
+
   useEffect(() => {
     setHabits(initialHabits);
     setTasks(initialTasks);
-  }, [initialHabits, initialTasks]);
+  }, [initialHabits, initialTasks, selectedDate]);
+
+  const navigateDay = (target: Date) => {
+    const key = startOfDay(target).toISOString().slice(0, 10);
+    router.push(`/today?date=${key}`);
+  };
 
   const completed =
     habits.filter((h) => h.completed).length +
@@ -112,31 +130,64 @@ export function TodayList({
   const completedTasks = tasks.filter((t) => t.completed);
   const isEmpty = habits.length === 0 && tasks.length === 0;
 
+  const dateISO = day.toISOString();
+
   const toggleTaskItem = (taskId: string, completed: boolean) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
     );
     startTransition(async () => {
       try {
-        await toggleTask(taskId, completed);
+        await toggleTask(taskId, completed, dateISO);
+        router.refresh();
       } catch {
         setTasks(initialTasks);
       }
     });
   };
 
-  const dateLabel = new Date().toLocaleDateString("ru-RU", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const dateLabel = format(day, "EEEE, d MMMM", { locale: ru });
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <p className={sectionLabel}>{dateLabel}</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Сегодня</h1>
-        <div className="h-px w-12 bg-[var(--accent)]" aria-hidden />
+      <header className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={!canGoBack}
+            onClick={() => navigateDay(subDays(day, 1))}
+            aria-label="Предыдущий день"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <p className={cn(sectionLabel, "text-center")}>{dateLabel}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            disabled={!canGoForward}
+            onClick={() => navigateDay(addDays(day, 1))}
+            aria-label="Следующий день"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">
+          {isToday ? "Сегодня" : format(day, "d MMMM", { locale: ru })}
+        </h1>
+        {!isToday ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto px-0 text-[var(--muted)]"
+            onClick={() => router.push("/today")}
+          >
+            Вернуться к сегодня
+          </Button>
+        ) : null}
       </header>
 
       <div className="space-y-3 border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -153,8 +204,8 @@ export function TodayList({
       {isEmpty ? (
         <EmptyState
           icon={CalendarCheck}
-          title="На сегодня пусто"
-          description="Создайте цель и добавьте к ней привычки — они появятся здесь"
+          title={isToday ? "На сегодня пусто" : "На этот день пусто"}
+          description="Создайте цель и добавьте к ней привычки — они появятся в нужный день"
         />
       ) : (
         <>
@@ -175,7 +226,8 @@ export function TodayList({
                       );
                       startTransition(async () => {
                         try {
-                          await toggleHabitLog(habit.id, completed);
+                          await toggleHabitLog(habit.id, completed, dateISO);
+                          router.refresh();
                         } catch {
                           setHabits(initialHabits);
                         }

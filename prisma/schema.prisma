@@ -158,10 +158,21 @@ model Task {
   status          TaskStatus       @default(PENDING)
   goal       Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
   planStep   PlanStep?        @relation(fields: [planStepId], references: [id], onDelete: SetNull)
+  logs       TaskLog[]
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 
   @@index([goalId, dueDate])
+}
+
+model TaskLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  date      DateTime @db.Date
+  completed Boolean  @default(true)
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, date])
 }
 
 enum HabitFrequency {

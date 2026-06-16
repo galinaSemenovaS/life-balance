@@ -33,7 +33,7 @@ export async function subscribeToPush(): Promise<{
     return { ok: false, reason: "no-vapid" };
   }
 
-  const reg = await navigator.serviceWorker.register("/sw.js");
+  const reg = await navigator.serviceWorker.register("/sw.js?v=3");
   await navigator.serviceWorker.ready;
 
   let permission = Notification.permission;
