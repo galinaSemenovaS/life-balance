@@ -8,6 +8,7 @@ export const CACHE_TAGS = {
   scores: "sphere-scores",
   spheres: "spheres",
   today: "today",
+  backlog: "backlog",
   dashboard: "dashboard",
   analytics: "analytics",
   settings: "settings",

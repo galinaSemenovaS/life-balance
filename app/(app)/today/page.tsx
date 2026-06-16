@@ -1,13 +1,16 @@
 import { getCachedTodayData } from "@/lib/data/queries";
 import {
   isHabitDueOnDate,
+  isRecurringTask,
+  isTaskBacklog,
   isTaskCompletedOnDate,
   isTaskDueOnDate,
+  isTaskOverdue,
 } from "@/lib/progress";
 import { getSessionUser } from "@/lib/session";
 import { TodayList } from "@/components/today/TodayList";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
-import { startOfDay, subDays } from "date-fns";
+import { isSameDay, startOfDay, subDays } from "date-fns";
 
 function parseSelectedDate(raw?: string): Date {
   const today = startOfDay(new Date());
@@ -29,15 +32,30 @@ export default async function TodayPage({
   const { date: dateParam } = await searchParams;
   const selectedDate = parseSelectedDate(dateParam);
   const dateKey = selectedDate.toISOString();
+  const today = startOfDay(new Date());
+  const isTodayView = isSameDay(selectedDate, today);
 
   const { habits, tasks } = await getCachedTodayData(user.id, dateKey);
 
   const dueHabits = habits.filter((h) => isHabitDueOnDate(h, selectedDate));
-  const dueTasks = tasks.filter((t) => isTaskDueOnDate(t, selectedDate));
+
+  const overdueTasks = isTodayView
+    ? tasks.filter((t) => isTaskOverdue(t, t.logs, today))
+    : [];
+
+  const dueTasks = tasks.filter((t) => {
+    if (isTodayView && isTaskOverdue(t, t.logs, today)) return false;
+    return isTaskDueOnDate(t, selectedDate);
+  });
+
+  const backlogCount = isTodayView
+    ? tasks.filter((t) => isTaskBacklog(t)).length
+    : 0;
 
   return (
     <TodayList
       selectedDate={dateKey}
+      backlogCount={backlogCount}
       habits={dueHabits.map((h) => ({
         id: h.id,
         title: h.title,
@@ -53,6 +71,14 @@ export default async function TodayPage({
         goalTitle: t.goal.title,
         recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(t.recurrence)),
         completed: isTaskCompletedOnDate(t, t.logs, selectedDate),
+      }))}
+      overdueTasks={overdueTasks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        goalTitle: t.goal.title,
+        recurrenceLabel: formatRecurrenceLabel(parseRecurrenceJson(t.recurrence)),
+        overdueDate: t.dueDate!.toISOString(),
+        isRecurring: isRecurringTask(t),
       }))}
     />
   );

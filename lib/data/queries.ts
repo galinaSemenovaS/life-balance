@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { startOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS, userTag } from "@/lib/cache-tags";
-import { getGoalProgress } from "@/lib/progress";
+import { getGoalProgress, isTaskBacklog } from "@/lib/progress";
 
 const CACHE_SECONDS = 30;
 
@@ -101,6 +101,7 @@ export function getCachedSpheresPageData(userId: string) {
 
 async function fetchTodayData(userId: string, forDate: Date) {
   const day = startOfDay(forDate);
+  const logsFrom = subDays(day, 90);
 
   const [habits, tasks] = await Promise.all([
     prisma.habit.findMany({
@@ -134,7 +135,7 @@ async function fetchTodayData(userId: string, forDate: Date) {
         createdAt: true,
         goal: { select: { title: true } },
         logs: {
-          where: { date: day },
+          where: { date: { gte: logsFrom, lte: day } },
           select: { completed: true, date: true },
         },
       },
@@ -149,6 +150,67 @@ export function getCachedTodayData(userId: string, dateKey: string) {
     () => fetchTodayData(userId, startOfDay(new Date(dateKey))),
     ["today", userId, dateKey],
     cacheOpts(userId, CACHE_TAGS.today)
+  )();
+}
+
+async function fetchBacklogData(userId: string) {
+  const spheres = await prisma.sphere.findMany({
+    where: { userId },
+    orderBy: [{ isPriority: "desc" }, { sortOrder: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      isPriority: true,
+      goals: {
+        where: { status: "ACTIVE" },
+        select: {
+          id: true,
+          title: true,
+          tasks: {
+            where: { status: "PENDING", dueDate: null },
+            select: {
+              id: true,
+              title: true,
+              recurrence: true,
+              status: true,
+              dueDate: true,
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
+    },
+  });
+
+  return spheres
+    .map((sphere) => {
+      const tasks = sphere.goals.flatMap((goal) =>
+        goal.tasks
+          .filter((t) => isTaskBacklog(t))
+          .map((t) => ({
+            id: t.id,
+            title: t.title,
+            goalId: goal.id,
+            goalTitle: goal.title,
+          }))
+      );
+      return {
+        id: sphere.id,
+        name: sphere.name,
+        color: sphere.color,
+        isPriority: sphere.isPriority,
+        tasks,
+      };
+    })
+    .filter((s) => s.tasks.length > 0);
+}
+
+export function getCachedBacklogData(userId: string) {
+  return unstable_cache(
+    () => fetchBacklogData(userId),
+    ["backlog", userId],
+    cacheOpts(userId, CACHE_TAGS.backlog)
   )();
 }
 

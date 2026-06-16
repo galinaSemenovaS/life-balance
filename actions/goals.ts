@@ -1,7 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
-import { startOfDay, isSameDay } from "date-fns";
+import { startOfDay, isSameDay, addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
@@ -249,6 +249,33 @@ export async function deleteTask(taskId: string) {
   revalidateUserData(user.id);
 }
 
+/** Пропустить просроченное вхождение (циклическая) или удалить разовую задачу */
+export async function dismissOverdueTask(taskId: string) {
+  const user = await requireUser();
+  const task = await prisma.task.findFirst({
+    where: { id: taskId, goal: { userId: user.id } },
+  });
+  if (!task?.dueDate) throw new Error("Task not found");
+
+  const rule = parseRecurrenceJson(task.recurrence);
+  const overdueDate = startOfDay(task.dueDate);
+
+  if (rule.preset !== "none") {
+    const next = getNextOccurrence(rule, overdueDate);
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        status: "PENDING",
+        dueDate: next ?? addDays(overdueDate, 1),
+      },
+    });
+  } else {
+    await prisma.task.delete({ where: { id: taskId } });
+  }
+
+  revalidateUserData(user.id);
+}
+
 export async function toggleTask(
   taskId: string,
   completed: boolean,
@@ -271,8 +298,8 @@ export async function toggleTask(
         create: { taskId, date: logDate, completed: true },
         update: { completed: true },
       });
-      if (task.dueDate && isSameDay(logDate, task.dueDate)) {
-        const next = getNextOccurrence(rule, task.dueDate);
+      if (task.dueDate && startOfDay(logDate).getTime() >= startOfDay(task.dueDate).getTime()) {
+        const next = getNextOccurrence(rule, startOfDay(task.dueDate));
         await prisma.task.update({
           where: { id: taskId },
           data: {

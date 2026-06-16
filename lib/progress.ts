@@ -115,6 +115,40 @@ export function isTaskOnTodayList(
   return isTaskDueOnDate(task, date);
 }
 
+/** Просроченная задача: dueDate в прошлом и не закрыта */
+export function isTaskOverdue(
+  task: Pick<Task, "dueDate" | "recurrence" | "status" | "createdAt">,
+  logs: TaskLogPick[],
+  today: Date | string = new Date()
+): boolean {
+  if (!task.dueDate) return false;
+
+  const day = startOfDay(coerceDate(today));
+  const due = startOfDay(task.dueDate);
+  if (due >= day) return false;
+
+  const rule = parseRecurrenceJson(task.recurrence);
+  if (rule.preset !== "none") {
+    return !isTaskCompletedOnDate(task, logs, due);
+  }
+
+  return task.status === "PENDING";
+}
+
+export function isRecurringTask(
+  task: Pick<Task, "recurrence">
+): boolean {
+  return parseRecurrenceJson(task.recurrence).preset !== "none";
+}
+
+/** Разовая задача без даты — не попадает на «Сегодня», лежит в очереди */
+export function isTaskBacklog(
+  task: Pick<Task, "dueDate" | "recurrence" | "status">
+): boolean {
+  if (task.status !== "PENDING" || task.dueDate) return false;
+  return parseRecurrenceJson(task.recurrence).preset === "none";
+}
+
 type HabitForProgress = Pick<
   Habit,
   "frequency" | "schedule" | "isActive" | "endDate" | "createdAt"

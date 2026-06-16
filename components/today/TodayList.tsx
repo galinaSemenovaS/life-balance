@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toggleHabitLog } from "@/actions/habits";
-import { toggleTask } from "@/actions/goals";
+import { dismissOverdueTask, toggleTask } from "@/actions/goals";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
-import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sectionLabel } from "@/lib/ui-classes";
 import { addDays, format, isSameDay, startOfDay, subDays } from "date-fns";
@@ -30,6 +31,15 @@ type TaskItem = {
   goalTitle: string;
   recurrenceLabel?: string;
   completed: boolean;
+};
+
+type OverdueTaskItem = {
+  id: string;
+  title: string;
+  goalTitle: string;
+  recurrenceLabel?: string;
+  overdueDate: string;
+  isRecurring: boolean;
 };
 
 function EditorialRow({
@@ -90,18 +100,84 @@ function TaskRow({
   );
 }
 
+function OverdueTaskRow({
+  task,
+  pending,
+  onComplete,
+  onDismiss,
+}: {
+  task: OverdueTaskItem;
+  pending: boolean;
+  onComplete: () => void;
+  onDismiss: () => void;
+}) {
+  const overdueLabel = format(
+    startOfDay(new Date(task.overdueDate)),
+    "d MMM",
+    { locale: ru }
+  );
+
+  return (
+    <div className="border border-[var(--destructive)] border-l-[3px] bg-[color-mix(in_srgb,var(--destructive)_6%,var(--surface))] p-4">
+      <div className="flex items-start gap-3">
+        <Checkbox
+          className="mt-0.5"
+          checked={false}
+          disabled={pending}
+          onCheckedChange={(checked) => {
+            if (checked) onComplete();
+          }}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium leading-snug">{task.title}</p>
+          <p className="mt-0.5 text-xs text-[var(--muted)]">{task.goalTitle}</p>
+          <p className="mt-1 text-xs text-[var(--destructive)]">
+            Просрочено с {overdueLabel}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <Button
+          type="button"
+          size="sm"
+          className="flex-1"
+          disabled={pending}
+          onClick={onComplete}
+        >
+          Выполнить
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          disabled={pending}
+          onClick={onDismiss}
+        >
+          {task.isRecurring ? "Пропустить" : "Удалить"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function TodayList({
   selectedDate,
   habits: initialHabits,
   tasks: initialTasks,
+  overdueTasks: initialOverdueTasks = [],
+  backlogCount = 0,
 }: {
   selectedDate: string;
   habits: HabitItem[];
   tasks: TaskItem[];
+  overdueTasks?: OverdueTaskItem[];
+  backlogCount?: number;
 }) {
   const router = useRouter();
   const [habits, setHabits] = useState(initialHabits);
   const [tasks, setTasks] = useState(initialTasks);
+  const [overdueTasks, setOverdueTasks] = useState(initialOverdueTasks);
   const [pending, startTransition] = useTransition();
 
   const day = startOfDay(new Date(selectedDate));
@@ -113,7 +189,8 @@ export function TodayList({
   useEffect(() => {
     setHabits(initialHabits);
     setTasks(initialTasks);
-  }, [initialHabits, initialTasks, selectedDate]);
+    setOverdueTasks(initialOverdueTasks);
+  }, [initialHabits, initialTasks, initialOverdueTasks, selectedDate]);
 
   const navigateDay = (target: Date) => {
     const key = startOfDay(target).toISOString().slice(0, 10);
@@ -128,7 +205,8 @@ export function TodayList({
 
   const pendingTasks = tasks.filter((t) => !t.completed);
   const completedTasks = tasks.filter((t) => t.completed);
-  const isEmpty = habits.length === 0 && tasks.length === 0;
+  const isEmpty =
+    habits.length === 0 && tasks.length === 0 && overdueTasks.length === 0;
 
   const dateISO = day.toISOString();
 
@@ -201,6 +279,30 @@ export function TodayList({
         </p>
       </div>
 
+      {isToday && backlogCount > 0 ? (
+        <Link
+          href="/backlog"
+          className="interactive-surface flex items-center gap-3 border border-[var(--border)] bg-[var(--surface)] p-4"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--background)]">
+            <Inbox className="h-4 w-4 text-[var(--muted)]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Без срока</p>
+            <p className="text-xs text-[var(--muted)]">
+              {backlogCount}{" "}
+              {backlogCount === 1
+                ? "задача"
+                : backlogCount < 5
+                  ? "задачи"
+                  : "задач"}{" "}
+              — по сферам
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-[var(--muted)]" />
+        </Link>
+      ) : null}
+
       {isEmpty ? (
         <EmptyState
           icon={CalendarCheck}
@@ -209,6 +311,47 @@ export function TodayList({
         />
       ) : (
         <>
+          {isToday && overdueTasks.length > 0 && (
+            <section className="space-y-2">
+              <div>
+                <h2 className={sectionLabel}>Просрочено</h2>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  Невыполненные задачи с прошлых дат — закройте или пропустите
+                </p>
+              </div>
+              {overdueTasks.map((task) => (
+                <OverdueTaskRow
+                  key={`${task.id}-${task.overdueDate}`}
+                  task={task}
+                  pending={pending}
+                  onComplete={() => {
+                    startTransition(async () => {
+                      try {
+                        await toggleTask(task.id, true, task.overdueDate);
+                        router.refresh();
+                      } catch {
+                        setOverdueTasks(initialOverdueTasks);
+                      }
+                    });
+                  }}
+                  onDismiss={() => {
+                    startTransition(async () => {
+                      try {
+                        await dismissOverdueTask(task.id);
+                        setOverdueTasks((prev) =>
+                          prev.filter((t) => t.id !== task.id)
+                        );
+                        router.refresh();
+                      } catch {
+                        setOverdueTasks(initialOverdueTasks);
+                      }
+                    });
+                  }}
+                />
+              ))}
+            </section>
+          )}
+
           {habits.length > 0 && (
             <section className="space-y-2">
               <h2 className={sectionLabel}>Привычки</h2>
