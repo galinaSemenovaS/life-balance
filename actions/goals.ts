@@ -7,6 +7,7 @@ import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
 import { ensureUserTimezone } from "@/actions/settings";
 import { getNextOccurrence, parseRecurrenceJson } from "@/lib/recurrence";
+import { parseDateKey } from "@/lib/date-key";
 
 export async function createGoal(data: {
   sphereId: string;
@@ -287,7 +288,7 @@ export async function toggleTask(
   });
   if (!task) throw new Error("Task not found");
 
-  const logDate = startOfDay(date ? new Date(date) : new Date());
+  const logDate = parseDateKey(date) ?? startOfDay(new Date());
   const rule = parseRecurrenceJson(task.recurrence);
   const isRecurring = rule.preset !== "none";
 

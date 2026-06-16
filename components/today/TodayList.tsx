@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { CalendarCheck, ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sectionLabel } from "@/lib/ui-classes";
+import { parseDateKey, toDateKey } from "@/lib/date-key";
 import { addDays, format, isSameDay, startOfDay, subDays } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -180,10 +181,10 @@ export function TodayList({
   const [overdueTasks, setOverdueTasks] = useState(initialOverdueTasks);
   const [pending, startTransition] = useTransition();
 
-  const day = startOfDay(new Date(selectedDate));
+  const day = parseDateKey(selectedDate) ?? startOfDay(new Date());
   const today = startOfDay(new Date());
   const isToday = isSameDay(day, today);
-  const canGoForward = !isToday;
+  const canGoForward = day < today;
   const canGoBack = day > subDays(today, 60);
 
   useEffect(() => {
@@ -193,8 +194,7 @@ export function TodayList({
   }, [initialHabits, initialTasks, initialOverdueTasks, selectedDate]);
 
   const navigateDay = (target: Date) => {
-    const key = startOfDay(target).toISOString().slice(0, 10);
-    router.push(`/today?date=${key}`);
+    router.push(`/today?date=${toDateKey(target)}`);
   };
 
   const completed =
@@ -208,7 +208,7 @@ export function TodayList({
   const isEmpty =
     habits.length === 0 && tasks.length === 0 && overdueTasks.length === 0;
 
-  const dateISO = day.toISOString();
+  const dateISO = toDateKey(day);
 
   const toggleTaskItem = (taskId: string, completed: boolean) => {
     setTasks((prev) =>

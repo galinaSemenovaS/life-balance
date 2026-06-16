@@ -10,13 +10,13 @@ import {
 import { getSessionUser } from "@/lib/session";
 import { TodayList } from "@/components/today/TodayList";
 import { formatRecurrenceLabel, parseRecurrenceJson } from "@/lib/recurrence";
+import { parseDateKey, toDateKey } from "@/lib/date-key";
 import { isSameDay, startOfDay, subDays } from "date-fns";
 
 function parseSelectedDate(raw?: string): Date {
   const today = startOfDay(new Date());
-  if (!raw) return today;
-  const parsed = startOfDay(new Date(raw));
-  if (Number.isNaN(parsed.getTime())) return today;
+  const parsed = parseDateKey(raw);
+  if (!parsed) return today;
   if (parsed > today) return today;
   const oldest = subDays(today, 60);
   if (parsed < oldest) return oldest;
@@ -31,7 +31,7 @@ export default async function TodayPage({
   const user = await getSessionUser();
   const { date: dateParam } = await searchParams;
   const selectedDate = parseSelectedDate(dateParam);
-  const dateKey = selectedDate.toISOString();
+  const dateKey = toDateKey(selectedDate);
   const today = startOfDay(new Date());
   const isTodayView = isSameDay(selectedDate, today);
 

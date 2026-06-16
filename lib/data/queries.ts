@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { startOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS, userTag } from "@/lib/cache-tags";
+import { parseDateKey } from "@/lib/date-key";
 import { getGoalProgress, isTaskBacklog } from "@/lib/progress";
 
 const CACHE_SECONDS = 30;
@@ -147,7 +148,11 @@ async function fetchTodayData(userId: string, forDate: Date) {
 
 export function getCachedTodayData(userId: string, dateKey: string) {
   return unstable_cache(
-    () => fetchTodayData(userId, startOfDay(new Date(dateKey))),
+    () =>
+      fetchTodayData(
+        userId,
+        parseDateKey(dateKey) ?? startOfDay(new Date())
+      ),
     ["today", userId, dateKey],
     cacheOpts(userId, CACHE_TAGS.today)
   )();

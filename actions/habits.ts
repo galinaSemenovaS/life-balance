@@ -3,6 +3,7 @@
 import { startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
+import { parseDateKey } from "@/lib/date-key";
 import { requireUser } from "@/lib/session";
 import { ensureUserTimezone } from "@/actions/settings";
 import {
@@ -71,7 +72,7 @@ export async function toggleHabitLog(
   });
   if (!habit) throw new Error("Habit not found");
 
-  const logDate = startOfDay(date ? new Date(date) : new Date());
+  const logDate = parseDateKey(date) ?? startOfDay(new Date());
 
   if (completed) {
     await prisma.habitLog.upsert({
