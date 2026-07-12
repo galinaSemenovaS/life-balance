@@ -7,10 +7,7 @@ export function userTag(userId: string) {
 export const CACHE_TAGS = {
   scores: "sphere-scores",
   spheres: "spheres",
-  today: "today",
-  backlog: "backlog",
-  dashboard: "dashboard",
-  analytics: "analytics",
+  wheel: "wheel",
   settings: "settings",
 } as const;
 

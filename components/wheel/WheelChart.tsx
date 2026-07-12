@@ -1,170 +1,184 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-} from "recharts";
-import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
-export type WheelDataPoint = {
+type SphereScore = {
+  sphereId: string;
   name: string;
-  score: number;
   color: string;
-  sphereId?: string;
+  score: number | null;
 };
 
-type WheelChartProps = {
-  data: WheelDataPoint[];
-  size?: "sm" | "md" | "lg";
-  selectedSphereId?: string | null;
-  onSphereSelect?: (sphereId: string) => void;
-  className?: string;
-  hideFooter?: boolean;
-  fullBleed?: boolean;
+type Props = {
+  sphereScores: SphereScore[];
+  size?: number;
+  interactive?: boolean;
 };
 
-const sizes = {
-  sm: 220,
-  md: 280,
-  lg: 360,
-};
+const CX = 160;
+const CY = 160;
+const MAX_R = 120;
+const GRID_LEVELS = [0.25, 0.5, 0.75, 1];
+const LABEL_R = 142;
 
-export function WheelChart({
-  data,
-  size = "md",
-  selectedSphereId,
-  onSphereSelect,
-  className,
-  hideFooter = false,
-  fullBleed = false,
-}: WheelChartProps) {
-  const [mounted, setMounted] = useState(false);
-  const [internalSelected, setInternalSelected] = useState<string | null>(null);
-  const dimension = sizes[size];
-  const selected = selectedSphereId ?? internalSelected;
+function polarToXY(angleDeg: number, r: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
+}
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+export function WheelChart({ sphereScores, size = 320, interactive = true }: Props) {
+  const router = useRouter();
+  const count = sphereScores.length;
+  if (count === 0) return null;
 
-  const chartData = data.map((d) => ({
-    ...d,
-    fullMark: 10,
-  }));
+  const angleStep = 360 / count;
 
-  const handleSelect = (point: WheelDataPoint) => {
-    if (!point.sphereId) return;
-    setInternalSelected(point.sphereId);
-    onSphereSelect?.(point.sphereId);
-  };
+  const gridPaths = GRID_LEVELS.map((level) => {
+    const r = MAX_R * level;
+    const points = sphereScores.map((_, i) => {
+      const { x, y } = polarToXY(i * angleStep, r);
+      return `${x},${y}`;
+    });
+    return `M ${points.join(" L ")} Z`;
+  });
+
+  const dataPoints = sphereScores.map((s, i) => {
+    const r = MAX_R * ((s.score ?? 0) / 10);
+    return polarToXY(i * angleStep, r);
+  });
+  const dataPath =
+    dataPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`).join(" ") + " Z";
+
+  const axisLines = sphereScores.map((_, i) => {
+    const end = polarToXY(i * angleStep, MAX_R);
+    return { x1: CX, y1: CY, x2: end.x, y2: end.y };
+  });
+
+  const nonNull = sphereScores.filter((x) => x.score !== null);
+  const avg = nonNull.length > 0
+    ? Math.round(nonNull.reduce((s, x) => s + (x.score ?? 0), 0) / nonNull.length)
+    : null;
 
   return (
-    <div
-      className={cn(
-        "w-full min-w-0",
-        fullBleed && "-mx-2",
-        className
-      )}
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 320 320"
+      style={{ overflow: "visible" }}
     >
-      <div
-        className="flex w-full justify-center"
-        style={{ height: dimension }}
-      >
-        {mounted ? (
-          <RadarChart
-            width={dimension}
-            height={dimension}
-            cx={dimension / 2}
-            cy={dimension / 2}
-            outerRadius={dimension * 0.36}
-            data={chartData}
-          >
-            <PolarGrid
-              stroke="var(--border)"
-              gridType="polygon"
-              radialLines={true}
-            />
-            <PolarAngleAxis
-              dataKey="name"
-              tick={{ fill: "var(--muted)", fontSize: 10, fontFamily: "inherit" }}
-            />
-            <PolarRadiusAxis
-              angle={90}
-              domain={[0, 10]}
-              tickCount={6}
-              axisLine={false}
-              tick={{ fill: "var(--muted)", fontSize: 9, fontFamily: "inherit" }}
-            />
-            <Radar
-              name="Оценка"
-              dataKey="score"
-              stroke="var(--foreground)"
-              fill="var(--accent)"
-              fillOpacity={0.12}
-              strokeWidth={1.5}
-              isAnimationActive
-              animationDuration={300}
-              animationEasing="ease-out"
-              dot={(props) => {
-                const { cx, cy, payload, index } = props;
-                if (cx == null || cy == null) return null;
+      {gridPaths.map((d, i) => (
+        <path
+          key={i}
+          d={d}
+          fill="none"
+          stroke="var(--border)"
+          strokeWidth={i === GRID_LEVELS.length - 1 ? 1.5 : 1}
+          strokeOpacity={0.7}
+        />
+      ))}
 
-                const point = payload as WheelDataPoint;
-                const isActive = selected === point.sphereId;
+      {axisLines.map((line, i) => (
+        <line
+          key={i}
+          x1={line.x1}
+          y1={line.y1}
+          x2={line.x2}
+          y2={line.y2}
+          stroke="var(--border)"
+          strokeWidth={1}
+          strokeOpacity={0.5}
+        />
+      ))}
 
-                return (
-                  <g
-                    key={index}
-                    onClick={() => handleSelect(point)}
-                    style={{ cursor: point.sphereId ? "pointer" : "default" }}
-                  >
-                    <circle cx={cx} cy={cy} r={24} fill="transparent" />
-                    {isActive && (
-                      <circle
-                        cx={cx}
-                        cy={cy}
-                        r={16}
-                        fill={point.color}
-                        fillOpacity={0.18}
-                        className="sphere-dot-active"
-                      />
-                    )}
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={isActive ? 8 : 5}
-                      fill={point.color}
-                      stroke="var(--surface)"
-                      strokeWidth={2}
-                      className={cn(
-                        "transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        isActive && "sphere-dot-active"
-                      )}
-                    />
-                  </g>
-                );
-              }}
-            />
-          </RadarChart>
-        ) : (
-          <div
-            className="border border-[var(--border)] bg-[var(--surface)]"
-            style={{ width: dimension, height: dimension }}
+      <path
+        d={dataPath}
+        fill="var(--accent)"
+        fillOpacity={0.12}
+        stroke="var(--accent)"
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+
+      {sphereScores.map((s, i) => {
+        const r = MAX_R * ((s.score ?? 0) / 10);
+        const { x, y } = polarToXY(i * angleStep, r);
+        return (
+          <circle
+            key={s.sphereId}
+            cx={x}
+            cy={y}
+            r={5}
+            fill={s.color}
+            stroke="var(--surface)"
+            strokeWidth={2}
           />
-        )}
-      </div>
-      {!hideFooter && selected && (
-        <p className="mt-2 text-center text-sm text-[var(--muted)]">
-          {data.find((d) => d.sphereId === selected)?.name}:{" "}
-          <span className="font-display font-semibold text-[var(--foreground)]">
-            {data.find((d) => d.sphereId === selected)?.score}/10
-          </span>
-        </p>
-      )}
-    </div>
+        );
+      })}
+
+      {sphereScores.map((s, i) => {
+        const angle = i * angleStep;
+        const { x, y } = polarToXY(angle, LABEL_R);
+        const normalizedAngle = ((angle % 360) + 360) % 360;
+        const textAnchor =
+          normalizedAngle > 15 && normalizedAngle < 165
+            ? "start"
+            : normalizedAngle > 195 && normalizedAngle < 345
+              ? "end"
+              : "middle";
+
+        const sectorCenter = polarToXY(angle, MAX_R * 0.5);
+
+        return (
+          <g key={s.sphereId}>
+            {interactive && (
+              <circle
+                cx={sectorCenter.x}
+                cy={sectorCenter.y}
+                r={MAX_R * 0.42}
+                fill="transparent"
+                style={{ cursor: "pointer" }}
+                onClick={() => router.push(`/spheres/${s.sphereId}`)}
+              />
+            )}
+            <text
+              x={x}
+              y={y}
+              textAnchor={textAnchor}
+              dominantBaseline="middle"
+              fontSize={9.5}
+              fontWeight={600}
+              fill="var(--foreground)"
+              style={{
+                pointerEvents: "none",
+                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui",
+              }}
+            >
+              {s.name}
+            </text>
+          </g>
+        );
+      })}
+
+      <circle
+        cx={CX}
+        cy={CY}
+        r={24}
+        fill="var(--surface)"
+        stroke="var(--border)"
+        strokeWidth={1.5}
+      />
+      <text
+        x={CX}
+        y={CY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={15}
+        fontWeight={700}
+        fill="var(--foreground)"
+        style={{ fontFamily: "-apple-system, BlinkMacSystemFont, system-ui" }}
+      >
+        {avg ?? "—"}
+      </text>
+    </svg>
   );
 }

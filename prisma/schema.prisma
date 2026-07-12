@@ -43,22 +43,19 @@ model VerificationToken {
 }
 
 model User {
-  id                     String                  @id @default(cuid())
-  name                   String?
-  email                  String?                 @unique
-  emailVerified          DateTime?
-  image                  String?
-  onboarded              Boolean                 @default(false)
-  accounts               Account[]
-  sessions               Session[]
-  spheres                Sphere[]
-  assessments            Assessment[]
-  goals                  Goal[]
-  habits                 Habit[]
-  pushSubscriptions      PushSubscription[]
-  notificationPreference NotificationPreference?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  emailVerified DateTime?
+  image         String?
+  onboarded     Boolean      @default(false)
+  accounts      Account[]
+  sessions      Session[]
+  spheres       Sphere[]
+  assessments   Assessment[]
+  goals         Goal[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Sphere {
@@ -71,7 +68,6 @@ model Sphere {
   isPriority  Boolean       @default(false)
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   goals       Goal[]
-  habits      Habit[]
   scores      SphereScore[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -83,7 +79,6 @@ model Sphere {
 model Assessment {
   id        String        @id @default(cuid())
   userId    String
-  note      String?
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   scores    SphereScore[]
   createdAt DateTime      @default(now())
@@ -96,6 +91,7 @@ model SphereScore {
   assessmentId String
   sphereId     String
   score        Int
+  description  String?    @db.Text
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   sphere       Sphere     @relation(fields: [sphereId], references: [id], onDelete: Cascade)
 
@@ -115,29 +111,14 @@ model Goal {
   title       String
   description String?
   status      GoalStatus @default(ACTIVE)
-  targetScore Int?
   deadline    DateTime?
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   sphere      Sphere     @relation(fields: [sphereId], references: [id], onDelete: Cascade)
-  planSteps   PlanStep[]
-  habits      Habit[]
   tasks       Task[]
-  aiDrafts    AiPlanDraft[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([userId, status])
-}
-
-model PlanStep {
-  id        String    @id @default(cuid())
-  goalId    String
-  title     String
-  order     Int
-  startDate DateTime?
-  endDate   DateTime?
-  goal      Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  tasks     Task[]
 }
 
 enum TaskStatus {
@@ -146,103 +127,14 @@ enum TaskStatus {
 }
 
 model Task {
-  id              String           @id @default(cuid())
-  goalId          String
-  planStepId      String?
-  title           String
-  dueDate         DateTime?
-  recurrence      Json?
-  reminderTime    String?
-  reminderEnabled Boolean          @default(false)
-  lastReminderAt  DateTime?
-  status          TaskStatus       @default(PENDING)
-  goal       Goal             @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  planStep   PlanStep?        @relation(fields: [planStepId], references: [id], onDelete: SetNull)
-  logs       TaskLog[]
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-
-  @@index([goalId, dueDate])
-}
-
-model TaskLog {
-  id        String   @id @default(cuid())
-  taskId    String
-  date      DateTime @db.Date
-  completed Boolean  @default(true)
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@unique([taskId, date])
-}
-
-enum HabitFrequency {
-  DAILY
-  WEEKLY
-  CUSTOM
-}
-
-model Habit {
-  id           String         @id @default(cuid())
-  userId       String
-  sphereId     String?
-  goalId       String?
-  title        String
-  description  String?
-  frequency    HabitFrequency @default(DAILY)
-  schedule     Json?
-  reminderTime    String?
-  reminderEnabled Boolean        @default(false)
-  lastReminderAt  DateTime?
-  endDate         DateTime?
-  isActive        Boolean        @default(true)
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sphere       Sphere?        @relation(fields: [sphereId], references: [id], onDelete: SetNull)
-  goal         Goal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  logs         HabitLog[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-
-  @@index([userId, isActive])
-}
-
-model HabitLog {
-  id        String   @id @default(cuid())
-  habitId   String
-  date      DateTime @db.Date
-  completed Boolean  @default(true)
-  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
-
-  @@unique([habitId, date])
-}
-
-model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-model NotificationPreference {
-  id                 String  @id @default(cuid())
-  userId             String  @unique
-  timezone           String  @default("Europe/Moscow")
-  wheelReviewDay     Int     @default(0)
-  wheelReviewTime    String  @default("10:00")
-  lastWheelReminderAt DateTime?
-  habitsEnabled      Boolean @default(true)
-  wheelReviewEnabled Boolean @default(true)
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model AiPlanDraft {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   goalId    String
-  prompt    String   @db.Text
-  response  String?  @db.Text
-  status    String   @default("pending")
-  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  title     String
+  notes     String?
+  status    TaskStatus @default(PENDING)
+  goal      Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([goalId])
 }

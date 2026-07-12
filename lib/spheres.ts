@@ -20,27 +20,33 @@ export async function ensureUserSpheres(userId: string) {
 }
 
 export async function getLatestSphereScores(userId: string) {
-  const assessment = await prisma.assessment.findFirst({
+  const spheres = await prisma.sphere.findMany({
     where: { userId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { sortOrder: "asc" },
     select: {
+      id: true,
+      name: true,
+      color: true,
+      isPriority: true,
       scores: {
+        orderBy: { assessment: { createdAt: "desc" } },
+        take: 1,
         select: {
           score: true,
-          sphereId: true,
-          sphere: { select: { name: true, color: true, isPriority: true } },
+          description: true,
+          assessment: { select: { createdAt: true } },
         },
       },
     },
   });
 
-  if (!assessment) return [];
-
-  return assessment.scores.map((s) => ({
-    sphereId: s.sphereId,
-    name: s.sphere.name,
-    color: s.sphere.color,
-    score: s.score,
-    isPriority: s.sphere.isPriority,
+  return spheres.map((s) => ({
+    sphereId: s.id,
+    name: s.name,
+    color: s.color,
+    isPriority: s.isPriority,
+    score: s.scores[0]?.score ?? null,
+    description: s.scores[0]?.description ?? null,
+    lastAssessedAt: s.scores[0]?.assessment.createdAt ?? null,
   }));
 }

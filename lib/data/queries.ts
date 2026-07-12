@@ -1,9 +1,7 @@
 import { unstable_cache } from "next/cache";
-import { startOfDay, subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { CACHE_TAGS, userTag } from "@/lib/cache-tags";
-import { parseDateKey } from "@/lib/date-key";
-import { getGoalProgress, isTaskBacklog } from "@/lib/progress";
+import { getLatestSphereScores } from "@/lib/spheres";
 
 const CACHE_SECONDS = 30;
 
@@ -14,328 +12,82 @@ function cacheOpts(userId: string, key: string) {
   };
 }
 
-async function fetchLatestSphereScores(userId: string) {
-  const assessment = await prisma.assessment.findFirst({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      scores: {
-        select: {
-          score: true,
-          sphereId: true,
-          sphere: { select: { name: true, color: true, isPriority: true } },
-        },
-      },
-    },
-  });
-
-  if (!assessment) return [];
-
-  return assessment.scores.map((s) => ({
-    sphereId: s.sphereId,
-    name: s.sphere.name,
-    color: s.sphere.color,
-    score: s.score,
-    isPriority: s.sphere.isPriority,
-  }));
+async function fetchWheelData(userId: string) {
+  const sphereScores = await getLatestSphereScores(userId);
+  return { sphereScores };
 }
 
-export function getCachedSphereScores(userId: string) {
+export function getCachedWheelData(userId: string) {
   return unstable_cache(
-    () => fetchLatestSphereScores(userId),
-    ["sphere-scores", userId],
-    cacheOpts(userId, CACHE_TAGS.scores)
+    () => fetchWheelData(userId),
+    ["wheel", userId],
+    cacheOpts(userId, CACHE_TAGS.wheel)
   )();
 }
 
-async function fetchSpheresPageData(userId: string) {
-  const [spheres, scores] = await Promise.all([
-    prisma.sphere.findMany({
-      where: { userId },
-      orderBy: [{ isPriority: "desc" }, { sortOrder: "asc" }],
+async function fetchSphereDetailData(userId: string, sphereId: string) {
+  const [sphere, journal, blocks] = await Promise.all([
+    prisma.sphere.findFirst({
+      where: { id: sphereId, userId },
+      select: { id: true, name: true, color: true, isPriority: true },
+    }),
+    prisma.sphereScore.findMany({
+      where: {
+        sphereId,
+        assessment: { userId },
+      },
+      orderBy: { assessment: { createdAt: "desc" } },
+      take: 50,
       select: {
         id: true,
-        name: true,
-        color: true,
-        isPriority: true,
-        goals: {
-          where: { status: "ACTIVE" },
+        score: true,
+        description: true,
+        assessment: { select: { createdAt: true } },
+      },
+    }),
+    prisma.goal.findMany({
+      where: { sphereId, userId, status: { not: "PAUSED" } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        status: true,
+        deadline: true,
+        tasks: {
+          orderBy: { createdAt: "asc" },
           select: {
-            tasks: { select: { status: true } },
+            id: true,
+            title: true,
+            notes: true,
+            status: true,
           },
         },
       },
     }),
-    fetchLatestSphereScores(userId),
   ]);
 
-  const scoreMap = Object.fromEntries(scores.map((s) => [s.sphereId, s.score]));
+  if (!sphere) return null;
 
-  return {
-    spheres: spheres.map((sphere) => {
-      const allTasks = sphere.goals.flatMap((g) => g.tasks);
-      return {
-        id: sphere.id,
-        name: sphere.name,
-        color: sphere.color,
-        isPriority: sphere.isPriority,
-        goalCount: sphere.goals.length,
-        progress: getGoalProgress(allTasks),
-        score: scoreMap[sphere.id],
-      };
-    }),
-    reassessSpheres: spheres.map((s) => ({
-      id: s.id,
-      name: s.name,
-      score: scoreMap[s.id] ?? 5,
-    })),
-  };
+  return { sphere, journal, blocks };
 }
 
-export function getCachedSpheresPageData(userId: string) {
+export function getCachedSphereDetailData(userId: string, sphereId: string) {
   return unstable_cache(
-    () => fetchSpheresPageData(userId),
-    ["spheres-page", userId],
+    () => fetchSphereDetailData(userId, sphereId),
+    ["sphere-detail", userId, sphereId],
     cacheOpts(userId, CACHE_TAGS.spheres)
   )();
 }
 
-async function fetchTodayData(userId: string, forDate: Date) {
-  const day = startOfDay(forDate);
-  const logsFrom = subDays(day, 90);
-
-  const [habits, tasks] = await Promise.all([
-    prisma.habit.findMany({
-      where: { userId, isActive: true },
-      select: {
-        id: true,
-        title: true,
-        frequency: true,
-        schedule: true,
-        endDate: true,
-        isActive: true,
-        createdAt: true,
-        sphere: { select: { name: true, color: true } },
-        goal: { select: { title: true } },
-        logs: {
-          where: { date: day },
-          select: { completed: true, date: true },
-        },
-      },
-    }),
-    prisma.task.findMany({
-      where: {
-        goal: { userId, status: "ACTIVE" },
-      },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        dueDate: true,
-        recurrence: true,
-        createdAt: true,
-        goal: { select: { title: true } },
-        logs: {
-          where: { date: { gte: logsFrom, lte: day } },
-          select: { completed: true, date: true },
-        },
-      },
-    }),
-  ]);
-
-  return { habits, tasks };
-}
-
-export function getCachedTodayData(userId: string, dateKey: string) {
-  return unstable_cache(
-    () =>
-      fetchTodayData(
-        userId,
-        parseDateKey(dateKey) ?? startOfDay(new Date())
-      ),
-    ["today", userId, dateKey],
-    cacheOpts(userId, CACHE_TAGS.today)
-  )();
-}
-
-async function fetchBacklogData(userId: string) {
+async function fetchSettingsData(userId: string) {
   const spheres = await prisma.sphere.findMany({
     where: { userId },
-    orderBy: [{ isPriority: "desc" }, { sortOrder: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      color: true,
-      isPriority: true,
-      goals: {
-        where: { status: "ACTIVE" },
-        select: {
-          id: true,
-          title: true,
-          tasks: {
-            where: { status: "PENDING", dueDate: null },
-            select: {
-              id: true,
-              title: true,
-              recurrence: true,
-              status: true,
-              dueDate: true,
-            },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-      },
-    },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, defaultName: true, color: true },
   });
 
-  return spheres
-    .map((sphere) => {
-      const tasks = sphere.goals.flatMap((goal) =>
-        goal.tasks
-          .filter((t) => isTaskBacklog(t))
-          .map((t) => ({
-            id: t.id,
-            title: t.title,
-            goalId: goal.id,
-            goalTitle: goal.title,
-          }))
-      );
-      return {
-        id: sphere.id,
-        name: sphere.name,
-        color: sphere.color,
-        isPriority: sphere.isPriority,
-        tasks,
-      };
-    })
-    .filter((s) => s.tasks.length > 0);
-}
-
-export function getCachedBacklogData(userId: string) {
-  return unstable_cache(
-    () => fetchBacklogData(userId),
-    ["backlog", userId],
-    cacheOpts(userId, CACHE_TAGS.backlog)
-  )();
-}
-
-async function fetchDashboardData(userId: string) {
-  const today = startOfDay(new Date());
-  const monthAgo = subDays(today, 30);
-
-  const [scores, goals, habits, todayTasks] = await Promise.all([
-    fetchLatestSphereScores(userId),
-    prisma.goal.findMany({
-      where: { userId, status: "ACTIVE" },
-      select: {
-        id: true,
-        title: true,
-        sphere: { select: { name: true } },
-        tasks: { select: { status: true } },
-      },
-      take: 5,
-    }),
-    prisma.habit.findMany({
-      where: { userId, isActive: true },
-      select: {
-        id: true,
-        title: true,
-        frequency: true,
-        schedule: true,
-        endDate: true,
-        isActive: true,
-        createdAt: true,
-        logs: {
-          where: { date: { gte: monthAgo } },
-          select: { date: true, completed: true },
-        },
-      },
-      take: 4,
-    }),
-    prisma.task.findMany({
-      where: {
-        goal: { userId, status: "ACTIVE" },
-      },
-      select: {
-        id: true,
-        status: true,
-        dueDate: true,
-        recurrence: true,
-        createdAt: true,
-        logs: {
-          where: { date: today },
-          select: { date: true, completed: true },
-        },
-      },
-    }),
-  ]);
-
-  return { scores, goals, habits, todayTasks };
-}
-
-export function getCachedDashboardData(userId: string) {
-  return unstable_cache(
-    () => fetchDashboardData(userId),
-    ["dashboard", userId],
-    cacheOpts(userId, CACHE_TAGS.dashboard)
-  )();
-}
-
-async function fetchAnalyticsData(userId: string) {
-  const today = startOfDay(new Date());
-  const weekAgo = subDays(today, 6);
-
-  const [assessments, habits] = await Promise.all([
-    prisma.assessment.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 12,
-      select: {
-        createdAt: true,
-        scores: {
-          select: {
-            score: true,
-            sphere: { select: { name: true } },
-          },
-        },
-      },
-    }),
-    prisma.habit.findMany({
-      where: { userId, isActive: true },
-      select: {
-        title: true,
-        logs: {
-          where: { date: { gte: weekAgo } },
-          select: { date: true, completed: true },
-        },
-      },
-    }),
-  ]);
-
-  return { assessments: assessments.reverse(), habits };
-}
-
-export function getCachedAnalyticsData(userId: string) {
-  return unstable_cache(
-    () => fetchAnalyticsData(userId),
-    ["analytics", userId],
-    cacheOpts(userId, CACHE_TAGS.analytics)
-  )();
-}
-
-async function fetchSettingsData(userId: string) {
-  const [prefs, spheres] = await Promise.all([
-    prisma.notificationPreference.findUnique({
-      where: { userId },
-    }),
-    prisma.sphere.findMany({
-      where: { userId },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true },
-    }),
-  ]);
-
-  return { prefs, spheres };
+  return { spheres };
 }
 
 export function getCachedSettingsData(userId: string) {
@@ -343,5 +95,17 @@ export function getCachedSettingsData(userId: string) {
     () => fetchSettingsData(userId),
     ["settings", userId],
     cacheOpts(userId, CACHE_TAGS.settings)
+  )();
+}
+
+async function fetchSpheresPageData(userId: string) {
+  return getLatestSphereScores(userId);
+}
+
+export function getCachedSpheresPageData(userId: string) {
+  return unstable_cache(
+    () => fetchSpheresPageData(userId),
+    ["spheres-page", userId],
+    cacheOpts(userId, CACHE_TAGS.spheres)
   )();
 }

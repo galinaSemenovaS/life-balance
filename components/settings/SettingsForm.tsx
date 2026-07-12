@@ -1,125 +1,123 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { updateNotificationPreferences } from "@/actions/settings";
+import { useTransition } from "react";
 import { renameSphere } from "@/actions/spheres";
+import { resetLifeBalance } from "@/actions/settings";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { ResetWheelSection } from "@/components/settings/ResetWheelSection";
-import { PushNotificationsSection } from "@/components/settings/PushNotificationsSection";
-import { getBrowserTimeZone } from "@/components/push/subscribe";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
+import { useState } from "react";
 
-const DAYS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+type Sphere = { id: string; name: string; defaultName: string; color: string };
 
-export function SettingsForm({
-  spheres,
-  preferences,
-}: {
-  spheres: { id: string; name: string }[];
-  preferences: {
-    wheelReviewEnabled: boolean;
-    wheelReviewDay: number;
-    wheelReviewTime: string;
-  };
-}) {
+export function SettingsForm({ spheres }: { spheres: Sphere[] }) {
   const [pending, startTransition] = useTransition();
-  const [wheelReviewEnabled, setWheelReviewEnabled] = useState(
-    preferences.wheelReviewEnabled
-  );
-  const [wheelReviewDay, setWheelReviewDay] = useState(preferences.wheelReviewDay);
-  const [wheelReviewTime, setWheelReviewTime] = useState(preferences.wheelReviewTime);
+  const [confirmReset, setConfirmReset] = useState(false);
 
-  const saveNotifications = () => {
+  function handleReset() {
     startTransition(async () => {
-      await updateNotificationPreferences({
-        wheelReviewEnabled,
-        wheelReviewDay,
-        wheelReviewTime,
-        timezone: getBrowserTimeZone(),
-      });
-      toast.success("Настройки сохранены");
+      try {
+        await resetLifeBalance();
+        toast.success("Данные сброшены");
+      } catch {
+        toast.error("Ошибка сброса");
+      }
     });
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <Card className="space-y-3">
-        <h3 className="font-semibold">Тема</h3>
-        <p className="text-xs text-slate-500">Выберите светлую, тёмную или системную</p>
-        <ThemeToggle />
-      </Card>
-
-      <ResetWheelSection />
-
-      <PushNotificationsSection />
-
-      <Card className="space-y-4">
-        <h3 className="font-semibold">Уведомления</h3>
-        <p className="text-xs text-slate-500">
-          Push для задач и привычек настраивается отдельно в каждой записи на странице цели.
-        </p>
-        <div className="flex items-center justify-between">
-          <Label htmlFor="wheelReviewEnabled">Пересмотр колеса</Label>
-          <Switch
-            id="wheelReviewEnabled"
-            checked={wheelReviewEnabled}
-            onCheckedChange={setWheelReviewEnabled}
-          />
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <h3 className="font-semibold text-[var(--foreground)]">Внешний вид</h3>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="wheelReviewDay">День пересмотра</Label>
-          <select
-            id="wheelReviewDay"
-            value={wheelReviewDay}
-            onChange={(e) => setWheelReviewDay(Number(e.target.value))}
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-700 dark:bg-slate-950"
+        <div className="px-5 py-4 flex items-center justify-between">
+          <span className="text-sm text-[var(--foreground)]">Тема</span>
+          <ThemeToggle />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <h3 className="font-semibold text-[var(--foreground)]">Названия сфер</h3>
+        </div>
+        <div className="divide-y divide-[var(--border)]">
+          {spheres.map((sphere) => (
+            <form
+              key={sphere.id}
+              className="flex items-center gap-3 px-5 py-3"
+              action={(formData) => {
+                startTransition(async () => {
+                  const name = formData.get("name") as string;
+                  if (!name.trim()) return;
+                  await renameSphere(sphere.id, name.trim());
+                  toast.success("Переименовано");
+                });
+              }}
+            >
+              <span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ backgroundColor: sphere.color }}
+              />
+              <input
+                name="name"
+                defaultValue={sphere.name}
+                required
+                className="flex-1 bg-transparent text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none"
+                placeholder={sphere.defaultName}
+              />
+              <button
+                type="submit"
+                disabled={pending}
+                className="text-xs text-[var(--accent)] font-semibold shrink-0 disabled:opacity-50"
+              >
+                OK
+              </button>
+            </form>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--border)]">
+          <h3 className="font-semibold text-[var(--foreground)]">Аккаунт</h3>
+        </div>
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="w-full flex items-center px-5 py-4 text-sm text-[var(--destructive)] font-medium border-b border-[var(--border)]"
+        >
+          Выйти из аккаунта
+        </button>
+        {confirmReset ? (
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-sm text-[var(--foreground)]">
+              Все данные (оценки, планы, задачи) будут удалены. Продолжить?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleReset}
+                disabled={pending}
+                className="flex-1 rounded-xl bg-[var(--destructive)] text-white py-2.5 text-sm font-semibold disabled:opacity-60"
+              >
+                Да, сбросить всё
+              </button>
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="flex-1 rounded-xl border border-[var(--border)] py-2.5 text-sm text-[var(--muted)]"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmReset(true)}
+            className="w-full flex items-center px-5 py-4 text-sm text-[var(--muted)]"
           >
-            {DAYS.map((day, i) => (
-              <option key={day} value={i}>
-                {day}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="wheelReviewTime">Время</Label>
-          <Input
-            id="wheelReviewTime"
-            type="time"
-            value={wheelReviewTime}
-            onChange={(e) => setWheelReviewTime(e.target.value)}
-          />
-        </div>
-        <Button className="w-full" disabled={pending} onClick={saveNotifications}>
-          Сохранить уведомления
-        </Button>
-      </Card>
-
-      <Card className="space-y-4">
-        <h3 className="font-semibold">Названия сфер</h3>
-        {spheres.map((sphere) => (
-          <form
-            key={sphere.id}
-            className="flex gap-2"
-            action={(formData) => {
-              startTransition(async () => {
-                await renameSphere(sphere.id, formData.get("name") as string);
-                toast.success("Сфера переименована");
-              });
-            }}
-          >
-            <Input name="name" defaultValue={sphere.name} required />
-            <Button type="submit" size="sm" variant="secondary" disabled={pending}>
-              OK
-            </Button>
-          </form>
-        ))}
-      </Card>
+            Сбросить все данные
+          </button>
+        )}
+      </section>
     </div>
   );
 }

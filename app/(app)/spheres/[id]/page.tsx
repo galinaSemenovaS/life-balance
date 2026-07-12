@@ -1,16 +1,11 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import { getCachedSphereScores } from "@/lib/data/queries";
-import { getSessionUser } from "@/lib/session";
-import { CreateGoalForm } from "@/components/goals/GoalForm";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Card } from "@/components/ui/card";
-import { Target } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { interactiveCard } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/session";
+import { getCachedSphereDetailData } from "@/lib/data/queries";
+import { SphereAssessForm } from "@/components/spheres/SphereAssessForm";
+import { SphereJournal } from "@/components/spheres/SphereJournal";
+import { SpherePlanSection } from "@/components/spheres/SpherePlanSection";
+import { ArrowLeft } from "lucide-react";
 
 export default async function SphereDetailPage({
   params,
@@ -18,85 +13,74 @@ export default async function SphereDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const user = await getSessionUser();
+  const user = await requireUser();
 
-  const sphere = await prisma.sphere.findFirst({
-    where: { id, userId: user.id },
-    include: {
-      goals: {
-        where: { status: { in: ["ACTIVE", "PAUSED"] } },
-        orderBy: { createdAt: "desc" },
-        include: {
-          habits: {
-            where: { isActive: true },
-            select: { id: true },
-          },
-        },
-      },
-    },
-  });
+  const data = await getCachedSphereDetailData(user.id, id);
+  if (!data) notFound();
 
-  if (!sphere) notFound();
-
-  const scores = await getCachedSphereScores(user.id);
-  const score = scores.find((s) => s.sphereId === sphere.id)?.score;
+  const { sphere, journal, blocks } = data;
+  const currentScore = journal[0]?.score ?? null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/spheres">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col min-h-screen pb-24">
+      <div className="px-6 pt-10 pb-6">
+        <Link
+          href="/wheel"
+          className="flex items-center gap-2 text-[var(--muted)] text-sm mb-6 hover:text-[var(--foreground)] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Колесо баланса
+        </Link>
+
+        <div className="flex items-center gap-3">
           <span
-            className="h-4 w-4 rounded-full"
+            className="w-4 h-4 rounded-full shrink-0"
             style={{ backgroundColor: sphere.color }}
           />
-          <div>
-            <h1 className="text-xl font-bold">{sphere.name}</h1>
-            {score !== undefined && (
-              <p className="text-sm text-teal-600">Оценка: {score}/10</p>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-[var(--foreground)] tracking-tight">
+            {sphere.name}
+          </h1>
+          {currentScore !== null && (
+            <span
+              className="ml-auto text-2xl font-bold tabular-nums"
+              style={{ color: sphere.color }}
+            >
+              {currentScore}
+            </span>
+          )}
         </div>
       </div>
 
-      <section className="space-y-2">
-        <div>
-          <h2 className="font-semibold">Цели</h2>
-          <p className="text-xs text-slate-500">
-            Сначала цель, затем привычки внутри неё — так всё связано
-          </p>
-        </div>
-        {sphere.goals.length === 0 ? (
-          <EmptyState
-            icon={Target}
-            title="Пока нет целей"
-            description="Создайте первую цель ниже — к ней можно добавить привычки"
-          />
-        ) : (
-          sphere.goals.map((goal) => (
-            <Link key={goal.id} href={`/goals/${goal.id}`} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
-              <Card className={cn("space-y-1 py-3 hover:bg-slate-50 dark:hover:bg-slate-900", interactiveCard)}>
-                <p className="font-medium">{goal.title}</p>
-                <p className="text-xs text-slate-500">
-                  {goal.habits.length}{" "}
-                  {goal.habits.length === 1
-                    ? "привычка"
-                    : goal.habits.length < 5
-                      ? "привычки"
-                      : "привычек"}
-                  · {goal.status === "ACTIVE" ? "активна" : "на паузе"}
-                </p>
-              </Card>
-            </Link>
-          ))
-        )}
-      </section>
+      <div className="px-6 space-y-8">
+        <section>
+          <h2 className="text-xs font-semibold tracking-widest uppercase text-[var(--muted)] mb-4">
+            Текущее состояние
+          </h2>
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+            <SphereAssessForm sphereId={sphere.id} currentScore={currentScore} />
+          </div>
+        </section>
 
-      <CreateGoalForm sphereId={sphere.id} />
+        {journal.length > 0 && (
+          <section>
+            <h2 className="text-xs font-semibold tracking-widest uppercase text-[var(--muted)] mb-4">
+              История
+            </h2>
+            <SphereJournal entries={journal} sphereColor={sphere.color} />
+          </section>
+        )}
+
+        <section>
+          <h2 className="text-xs font-semibold tracking-widest uppercase text-[var(--muted)] mb-4">
+            План улучшений
+          </h2>
+          <SpherePlanSection
+            sphereId={sphere.id}
+            sphereName={sphere.name}
+            blocks={blocks}
+          />
+        </section>
+      </div>
     </div>
   );
 }

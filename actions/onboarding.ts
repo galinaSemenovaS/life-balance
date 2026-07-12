@@ -43,37 +43,9 @@ export async function completeOnboarding(
       where: { id: user.id },
       data: { onboarded: true },
     });
-
-    await tx.notificationPreference.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
-    });
   });
 
   await unstable_update({ user: { onboarded: true } });
   revalidateUserData(user.id);
-  redirect("/today");
-}
-
-export async function saveReassessment(
-  scores: { sphereId: string; score: number }[],
-  note?: string
-) {
-  const user = await requireUser();
-
-  await prisma.assessment.create({
-    data: {
-      userId: user.id,
-      note,
-      scores: {
-        create: scores.map((s) => ({
-          sphereId: s.sphereId,
-          score: s.score,
-        })),
-      },
-    },
-  });
-
-  revalidateUserData(user.id);
+  redirect("/wheel");
 }

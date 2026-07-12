@@ -11,5 +11,5 @@ export default async function HomePage() {
     redirect("/onboarding");
   }
 
-  redirect("/today");
+  redirect("/wheel");
 }

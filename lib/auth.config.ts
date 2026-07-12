@@ -44,7 +44,6 @@ export const authConfig = {
       const isPublic =
         pathname.startsWith("/login") ||
         pathname.startsWith("/api/auth") ||
-        pathname.startsWith("/api/cron") ||
         pathname === "/manifest.json" ||
         pathname === "/sw.js" ||
         pathname.startsWith("/icons");
@@ -54,7 +53,7 @@ export const authConfig = {
       }
 
       if (isLoggedIn && pathname === "/login") {
-        return Response.redirect(new URL("/today", nextUrl));
+        return Response.redirect(new URL("/wheel", nextUrl));
       }
 
       if (
@@ -67,7 +66,7 @@ export const authConfig = {
       }
 
       if (isLoggedIn && onboarded && pathname === "/onboarding") {
-        return Response.redirect(new URL("/today", nextUrl));
+        return Response.redirect(new URL("/wheel", nextUrl));
       }
 
       return true;

@@ -1,20 +1,14 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
-import { startOfDay, isSameDay, addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { revalidateUserData } from "@/lib/cache-tags";
 import { requireUser } from "@/lib/session";
-import { ensureUserTimezone } from "@/actions/settings";
-import { getNextOccurrence, parseRecurrenceJson } from "@/lib/recurrence";
-import { parseDateKey } from "@/lib/date-key";
 
 export async function createGoal(data: {
   sphereId: string;
   title: string;
   description?: string;
   deadline?: string;
-  targetScore?: number;
 }) {
   const user = await requireUser();
 
@@ -25,26 +19,11 @@ export async function createGoal(data: {
       title: data.title,
       description: data.description,
       deadline: data.deadline ? new Date(data.deadline) : undefined,
-      targetScore: data.targetScore,
     },
   });
 
   revalidateUserData(user.id);
   return goal;
-}
-
-export async function updateGoalStatus(
-  goalId: string,
-  status: "ACTIVE" | "COMPLETED" | "PAUSED"
-) {
-  const user = await requireUser();
-
-  await prisma.goal.updateMany({
-    where: { id: goalId, userId: user.id },
-    data: { status },
-  });
-
-  revalidateUserData(user.id);
 }
 
 export async function updateGoal(
@@ -73,6 +52,20 @@ export async function updateGoal(
   revalidateUserData(user.id);
 }
 
+export async function updateGoalStatus(
+  goalId: string,
+  status: "ACTIVE" | "COMPLETED" | "PAUSED"
+) {
+  const user = await requireUser();
+
+  await prisma.goal.updateMany({
+    where: { id: goalId, userId: user.id },
+    data: { status },
+  });
+
+  revalidateUserData(user.id);
+}
+
 export async function deleteGoal(goalId: string) {
   const user = await requireUser();
 
@@ -82,115 +75,28 @@ export async function deleteGoal(goalId: string) {
   });
   if (!goal) throw new Error("Goal not found");
 
-  await prisma.$transaction(async (tx) => {
-    const habits = await tx.habit.findMany({
-      where: { goalId },
-      select: { id: true },
-    });
-    const habitIds = habits.map((h) => h.id);
-
-    if (habitIds.length > 0) {
-      await tx.habitLog.deleteMany({ where: { habitId: { in: habitIds } } });
-      await tx.habit.deleteMany({ where: { id: { in: habitIds } } });
-    }
-
-    await tx.goal.delete({ where: { id: goalId } });
-  });
-
-  revalidateUserData(user.id);
-}
-
-export async function createPlanStep(goalId: string, title: string) {
-  const user = await requireUser();
-  const goal = await prisma.goal.findFirst({
-    where: { id: goalId, userId: user.id },
-  });
-  if (!goal) throw new Error("Goal not found");
-
-  const maxOrder = await prisma.planStep.aggregate({
-    where: { goalId },
-    _max: { order: true },
-  });
-
-  const step = await prisma.planStep.create({
-    data: {
-      goalId,
-      title,
-      order: (maxOrder._max.order ?? -1) + 1,
-    },
-  });
-
-  revalidateUserData(user.id);
-  return step;
-}
-
-export async function updatePlanStep(stepId: string, data: { title: string }) {
-  const user = await requireUser();
-
-  const step = await prisma.planStep.findFirst({
-    where: { id: stepId, goal: { userId: user.id } },
-  });
-  if (!step) throw new Error("Plan step not found");
-
-  await prisma.planStep.update({
-    where: { id: stepId },
-    data: { title: data.title },
-  });
-
-  revalidateUserData(user.id);
-}
-
-export async function deletePlanStep(stepId: string) {
-  const user = await requireUser();
-
-  const step = await prisma.planStep.findFirst({
-    where: { id: stepId, goal: { userId: user.id } },
-    select: { id: true },
-  });
-  if (!step) throw new Error("Plan step not found");
-
-  await prisma.$transaction([
-    prisma.task.deleteMany({ where: { planStepId: stepId } }),
-    prisma.planStep.delete({ where: { id: stepId } }),
-  ]);
+  await prisma.goal.delete({ where: { id: goalId } });
 
   revalidateUserData(user.id);
 }
 
 export async function createTask(data: {
   goalId: string;
-  planStepId?: string;
   title: string;
-  dueDate?: string;
-  recurrenceJson?: string;
-  reminderTime?: string;
-  reminderEnabled?: boolean;
-  timezone?: string;
+  notes?: string;
 }) {
   const user = await requireUser();
-  if (data.timezone) await ensureUserTimezone(data.timezone);
+
   const goal = await prisma.goal.findFirst({
     where: { id: data.goalId, userId: user.id },
   });
   if (!goal) throw new Error("Goal not found");
 
-  const rule = parseRecurrenceJson(
-    data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
-  );
-
   const task = await prisma.task.create({
     data: {
       goalId: data.goalId,
-      planStepId: data.planStepId,
       title: data.title,
-      dueDate: data.dueDate
-        ? startOfDay(new Date(data.dueDate))
-        : rule.preset !== "none"
-          ? startOfDay(new Date())
-          : undefined,
-      recurrence: rule.preset !== "none" ? (rule as object) : undefined,
-      reminderTime: data.reminderEnabled ? data.reminderTime : undefined,
-      reminderEnabled: data.reminderEnabled ?? false,
+      notes: data.notes,
     },
   });
 
@@ -198,39 +104,39 @@ export async function createTask(data: {
   return task;
 }
 
-export async function updateTaskSettings(
+export async function updateTask(
   taskId: string,
-  data: {
-    title?: string;
-    dueDate?: string;
-    recurrenceJson?: string;
-    reminderTime?: string | null;
-    reminderEnabled?: boolean;
-    timezone?: string;
-  }
+  data: { title: string; notes?: string }
 ) {
   const user = await requireUser();
-  if (data.timezone) await ensureUserTimezone(data.timezone);
+
   const task = await prisma.task.findFirst({
     where: { id: taskId, goal: { userId: user.id } },
   });
   if (!task) throw new Error("Task not found");
 
-  const rule = parseRecurrenceJson(
-    data.recurrenceJson ? JSON.parse(data.recurrenceJson) : null
-  );
-
   await prisma.task.update({
     where: { id: taskId },
     data: {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      dueDate: data.dueDate ? new Date(data.dueDate) : task.dueDate,
-      recurrence:
-        rule.preset !== "none" ? (rule as object) : Prisma.DbNull,
-      reminderEnabled: data.reminderEnabled ?? false,
-      reminderTime:
-        data.reminderEnabled && data.reminderTime ? data.reminderTime : null,
+      title: data.title,
+      notes: data.notes ?? null,
     },
+  });
+
+  revalidateUserData(user.id);
+}
+
+export async function toggleTaskStatus(taskId: string, completed: boolean) {
+  const user = await requireUser();
+
+  const task = await prisma.task.findFirst({
+    where: { id: taskId, goal: { userId: user.id } },
+  });
+  if (!task) throw new Error("Task not found");
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { status: completed ? "COMPLETED" : "PENDING" },
   });
 
   revalidateUserData(user.id);
@@ -246,80 +152,6 @@ export async function deleteTask(taskId: string) {
   if (!task) throw new Error("Task not found");
 
   await prisma.task.delete({ where: { id: taskId } });
-
-  revalidateUserData(user.id);
-}
-
-/** Пропустить просроченное вхождение (циклическая) или удалить разовую задачу */
-export async function dismissOverdueTask(taskId: string) {
-  const user = await requireUser();
-  const task = await prisma.task.findFirst({
-    where: { id: taskId, goal: { userId: user.id } },
-  });
-  if (!task?.dueDate) throw new Error("Task not found");
-
-  const rule = parseRecurrenceJson(task.recurrence);
-  const overdueDate = startOfDay(task.dueDate);
-
-  if (rule.preset !== "none") {
-    const next = getNextOccurrence(rule, overdueDate);
-    await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        status: "PENDING",
-        dueDate: next ?? addDays(overdueDate, 1),
-      },
-    });
-  } else {
-    await prisma.task.delete({ where: { id: taskId } });
-  }
-
-  revalidateUserData(user.id);
-}
-
-export async function toggleTask(
-  taskId: string,
-  completed: boolean,
-  date?: string
-) {
-  const user = await requireUser();
-  const task = await prisma.task.findFirst({
-    where: { id: taskId, goal: { userId: user.id } },
-  });
-  if (!task) throw new Error("Task not found");
-
-  const logDate = parseDateKey(date) ?? startOfDay(new Date());
-  const rule = parseRecurrenceJson(task.recurrence);
-  const isRecurring = rule.preset !== "none";
-
-  if (isRecurring) {
-    if (completed) {
-      await prisma.taskLog.upsert({
-        where: { taskId_date: { taskId, date: logDate } },
-        create: { taskId, date: logDate, completed: true },
-        update: { completed: true },
-      });
-      if (task.dueDate && startOfDay(logDate).getTime() >= startOfDay(task.dueDate).getTime()) {
-        const next = getNextOccurrence(rule, startOfDay(task.dueDate));
-        await prisma.task.update({
-          where: { id: taskId },
-          data: {
-            status: "PENDING",
-            dueDate: next ?? task.dueDate,
-          },
-        });
-      }
-    } else {
-      await prisma.taskLog.deleteMany({
-        where: { taskId, date: logDate },
-      });
-    }
-  } else {
-    await prisma.task.update({
-      where: { id: taskId },
-      data: { status: completed ? "COMPLETED" : "PENDING" },
-    });
-  }
 
   revalidateUserData(user.id);
 }

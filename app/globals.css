@@ -3,32 +3,30 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f3efe6;
-  --foreground: #1c1b18;
-  --surface: #faf8f4;
-  --card: #faf8f4;
-  --border: #d8d2c8;
-  --primary: #d4a017;
-  --accent: #d4a017;
-  --accent-foreground: #1c1b18;
-  --primary-soft: #f5ecd4;
-  --muted: #6e6860;
-  --destructive: #b84233;
+  --background: #F5F5F7;
+  --foreground: #1D1D1F;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --border: #D2D2D7;
+  --accent: #007AFF;
+  --accent-foreground: #FFFFFF;
+  --muted: #6E6E73;
+  --destructive: #FF3B30;
+  --success: #34C759;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
-  --background: #141412;
-  --foreground: #ede9e1;
-  --surface: #1e1d1a;
-  --card: #1e1d1a;
-  --border: #2e2c28;
-  --primary: #e8b84a;
-  --accent: #e8b84a;
-  --accent-foreground: #1c1b18;
-  --primary-soft: rgba(232, 184, 74, 0.12);
-  --muted: #9a948a;
-  --destructive: #d65a4a;
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --surface: #1C1C1E;
+  --card: #1C1C1E;
+  --border: #38383A;
+  --accent: #0A84FF;
+  --accent-foreground: #FFFFFF;
+  --muted: #98989D;
+  --destructive: #FF453A;
+  --success: #30D158;
 }
 
 @theme inline {
@@ -39,7 +37,6 @@
   --color-accent: var(--accent);
   --color-muted: var(--muted);
   --font-sans: var(--font-ui);
-  --font-serif: var(--font-display);
 }
 
 * {
@@ -62,60 +59,7 @@ select,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-ui), system-ui, sans-serif;
-}
-
-.font-display {
-  font-family: var(--font-display), Georgia, "Times New Roman", serif;
-}
-
-.app-shell-bg {
-  background-color: var(--background);
-}
-
-.editorial-section-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.editorial-accent-bar {
-  border-left: 3px solid var(--accent);
-}
-
-.museum-frame {
-  border: 1px solid var(--border);
-  box-shadow: inset 0 0 0 1px var(--background);
-}
-
-.interactive-surface {
-  transition:
-    color 300ms var(--ease-out),
-    background-color 300ms var(--ease-out),
-    border-color 300ms var(--ease-out),
-    transform 300ms var(--ease-out);
-}
-
-.interactive-surface:hover {
-  background-color: color-mix(in srgb, var(--foreground) 3%, var(--surface));
-}
-
-@keyframes sphere-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.75;
-    transform: scale(1.12);
-  }
-}
-
-.sphere-dot-active {
-  animation: sphere-pulse 1.4s var(--ease-out) infinite;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
 }
 
 @keyframes float-in {

@@ -1,125 +1,119 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { deleteGoal, updateGoal } from "@/actions/goals";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { CollapsibleForm } from "@/components/ui/collapsible-form";
-import { ConfirmDeleteButton } from "@/components/ui/confirm-delete-button";
 import { toast } from "sonner";
+import { Pencil, Trash2, X, Check } from "lucide-react";
 
-type GoalEditFormProps = {
+type Props = {
   goalId: string;
   sphereId: string;
   title: string;
   description: string | null;
-  deadline: string | null;
   status: string;
 };
 
-const STATUS_OPTIONS = [
-  { value: "ACTIVE", label: "Активна" },
-  { value: "PAUSED", label: "На паузе" },
-  { value: "COMPLETED", label: "Завершена" },
-] as const;
-
-export function GoalEditForm({
-  goalId,
-  sphereId,
-  title,
-  description,
-  deadline,
-  status,
-}: GoalEditFormProps) {
-  const router = useRouter();
+export function GoalEditForm({ goalId, sphereId, title, description, status }: Props) {
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(title);
+  const [editDesc, setEditDesc] = useState(description ?? "");
   const [pending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  function handleSave() {
+    startTransition(async () => {
+      try {
+        await updateGoal(goalId, {
+          title: editTitle,
+          description: editDesc || undefined,
+          status: status as "ACTIVE" | "COMPLETED" | "PAUSED",
+        });
+        setEditing(false);
+        toast.success("Блок обновлён");
+      } catch {
+        toast.error("Не удалось сохранить");
+      }
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteGoal(goalId);
+        toast.success("Блок удалён");
+      } catch {
+        toast.error("Не удалось удалить");
+      }
+    });
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 py-2">
+        <input
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+        />
+        <textarea
+          value={editDesc}
+          onChange={(e) => setEditDesc(e.target.value)}
+          placeholder="Описание…"
+          rows={2}
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={pending}
+            className="flex-1 rounded-xl bg-[var(--accent)] text-white py-2 text-sm font-semibold disabled:opacity-60"
+          >
+            <Check className="w-4 h-4 inline mr-1" />
+            Сохранить
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)]"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <CollapsibleForm label="Редактировать цель" hint="Название, дедлайн и статус">
-      <form
-        className="space-y-3"
-        action={(formData) => {
-          startTransition(async () => {
-            try {
-              await updateGoal(goalId, {
-                title: formData.get("title") as string,
-                description: (formData.get("description") as string) || undefined,
-                deadline: (formData.get("deadline") as string) || undefined,
-                status: formData.get("status") as "ACTIVE" | "PAUSED" | "COMPLETED",
-              });
-              toast.success("Цель обновлена");
-              router.refresh();
-            } catch {
-              toast.error("Не удалось сохранить");
-            }
-          });
-        }}
+    <div className="flex gap-2">
+      <button
+        onClick={() => setEditing(true)}
+        className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
       >
-        <div className="space-y-2">
-          <Label htmlFor="edit-goal-title">Название</Label>
-          <Input
-            id="edit-goal-title"
-            name="title"
-            required
-            defaultValue={title}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="edit-goal-description">Описание</Label>
-          <Textarea
-            id="edit-goal-description"
-            name="description"
-            rows={2}
-            defaultValue={description ?? ""}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="edit-goal-deadline">Дедлайн</Label>
-          <Input
-            id="edit-goal-deadline"
-            name="deadline"
-            type="date"
-            defaultValue={deadline ? deadline.slice(0, 10) : ""}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="edit-goal-status">Статус</Label>
-          <select
-            id="edit-goal-status"
-            name="status"
-            defaultValue={status}
-            className="flex h-11 w-full rounded-sm border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus-visible:border-[var(--foreground)] focus-visible:ring-1 focus-visible:ring-[var(--foreground)]"
+        <Pencil className="w-3.5 h-3.5" />
+      </button>
+      {confirmDelete ? (
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={handleDelete}
+            disabled={pending}
+            className="text-xs text-[var(--destructive)] font-semibold"
           >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            Удалить
+          </button>
+          <button
+            onClick={() => setConfirmDelete(false)}
+            className="text-xs text-[var(--muted)]"
+          >
+            Отмена
+          </button>
         </div>
-        <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? "Сохранение..." : "Сохранить"}
-        </Button>
-      </form>
-
-      <ConfirmDeleteButton
-        label="Удалить цель"
-        confirmLabel="Да, удалить цель"
-        onConfirm={async () => {
-          try {
-            await deleteGoal(goalId);
-            toast.success("Цель удалена");
-            router.push(`/spheres/${sphereId}`);
-            router.refresh();
-          } catch {
-            toast.error("Не удалось удалить");
-            throw new Error("delete failed");
-          }
-        }}
-      />
-    </CollapsibleForm>
+      ) : (
+        <button
+          onClick={() => setConfirmDelete(true)}
+          className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--destructive)] hover:bg-[var(--background)] transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
   );
 }
