@@ -52,7 +52,8 @@ export const authConfig = {
         return false;
       }
 
-      if (isLoggedIn && pathname === "/login") {
+      const REMOVED_ROUTES = ["/today", "/backlog", "/analytics", "/dashboard"];
+      if (isLoggedIn && (pathname === "/login" || REMOVED_ROUTES.some((r) => pathname.startsWith(r)))) {
         return Response.redirect(new URL("/wheel", nextUrl));
       }
 
