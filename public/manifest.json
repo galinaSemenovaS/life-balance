@@ -1,33 +1,33 @@
 {
   "name": "Life Balance",
   "short_name": "Balance",
-  "description": "Goals, habits, and life balance",
-  "start_url": "/today",
+  "description": "Колесо баланса, планирование жизни",
+  "start_url": "/wheel",
   "display": "standalone",
-  "background_color": "#f3efe6",
-  "theme_color": "#f3efe6",
+  "background_color": "#F5F5F7",
+  "theme_color": "#F5F5F7",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/icon-192.png?v=4",
+      "src": "/icons/icon-192.png?v=5",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png?v=4",
+      "src": "/icons/icon-512.png?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192.png?v=4",
+      "src": "/icons/icon-192.png?v=5",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512.png?v=4",
+      "src": "/icons/icon-512.png?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
