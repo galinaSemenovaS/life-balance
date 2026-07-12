@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronDown, ChevronUp, Plus, Check, Trash2 } from "lucide-react";
-import { createTask, deleteTask, toggleTaskStatus, deleteGoal } from "@/actions/goals";
+import { ChevronDown, ChevronUp, Plus, Check, Trash2, Pencil } from "lucide-react";
+import { createTask, deleteTask, toggleTaskStatus, deleteGoal, updateGoal } from "@/actions/goals";
 import { CalendarExportModal } from "@/components/tasks/CalendarExportModal";
-import { GoalEditForm } from "@/components/goals/GoalEditForm";
 import { CreateGoalForm } from "@/components/goals/GoalForm";
 import { toast } from "sonner";
 
@@ -152,10 +151,58 @@ function AddTaskInline({ goalId }: { goalId: string }) {
 
 function BlockCard({ block, sphereId, sphereName }: { block: Block; sphereId: string; sphereName: string }) {
   const [expanded, setExpanded] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(block.title);
+  const [editDesc, setEditDesc] = useState(block.description ?? "");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pending, startTransition] = useTransition();
   const doneCount = block.tasks.filter((t) => t.status === "COMPLETED").length;
+
+  function handleSave() {
+    startTransition(async () => {
+      try {
+        await updateGoal(block.id, { title: editTitle, description: editDesc || undefined, status: block.status as "ACTIVE" | "COMPLETED" | "PAUSED" });
+        setEditing(false);
+        toast.success("Блок обновлён");
+      } catch { toast.error("Не удалось сохранить"); }
+    });
+  }
+
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteGoal(block.id);
+        toast.success("Блок удалён");
+      } catch { toast.error("Не удалось удалить"); }
+    });
+  }
 
   return (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+      {editing ? (
+        <div className="px-4 py-3 space-y-2">
+          <input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+          />
+          <textarea
+            value={editDesc}
+            onChange={(e) => setEditDesc(e.target.value)}
+            placeholder="Описание…"
+            rows={2}
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent resize-none"
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={pending} className="flex-1 rounded-xl bg-[var(--accent)] text-white py-2 text-sm font-semibold disabled:opacity-60">
+              Сохранить
+            </button>
+            <button onClick={() => setEditing(false)} className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm text-[var(--muted)]">
+              Отмена
+            </button>
+          </div>
+        </div>
+      ) : (
       <div
         className="flex items-center gap-3 px-4 py-3.5 cursor-pointer"
         onClick={() => setExpanded((v) => !v)}
@@ -175,23 +222,26 @@ function BlockCard({ block, sphereId, sphereName }: { block: Block; sphereId: st
             <p className="text-xs text-[var(--muted)] truncate mt-0.5">{block.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <div onClick={(e) => e.stopPropagation()}>
-            <GoalEditForm
-              goalId={block.id}
-              sphereId={sphereId}
-              title={block.title}
-              description={block.description}
-              status={block.status}
-            />
-          </div>
-          {expanded ? (
-            <ChevronUp className="w-4 h-4 text-[var(--muted)]" />
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button onClick={() => setEditing(true)} className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors">
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          {confirmDelete ? (
+            <div className="flex gap-1 items-center">
+              <button onClick={handleDelete} disabled={pending} className="text-xs text-[var(--destructive)] font-semibold px-1">Удалить</button>
+              <button onClick={() => setConfirmDelete(false)} className="text-xs text-[var(--muted)] px-1">Отмена</button>
+            </div>
           ) : (
-            <ChevronDown className="w-4 h-4 text-[var(--muted)]" />
+            <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg text-[var(--muted)] hover:text-[var(--destructive)] hover:bg-[var(--background)] transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           )}
+          <button onClick={() => setExpanded((v) => !v)} className="p-1">
+            {expanded ? <ChevronUp className="w-4 h-4 text-[var(--muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted)]" />}
+          </button>
         </div>
       </div>
+      )}
 
       {expanded && (
         <div className="px-4 pb-4">
