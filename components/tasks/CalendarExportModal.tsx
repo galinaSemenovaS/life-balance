@@ -2,10 +2,8 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, X, CalendarDays, ListTodo } from "lucide-react";
+import { CalendarPlus, X } from "lucide-react";
 import { markTaskCalendarExported } from "@/actions/goals";
-
-type ExportType = "event" | "task";
 
 type Props = {
   taskId: string;
@@ -18,7 +16,6 @@ export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(taskTitle);
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [exportType, setExportType] = useState<ExportType>("event");
   const [, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
 
@@ -27,20 +24,15 @@ export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName 
   const details = `${sphereName} → ${blockTitle}`;
 
   function handleExport() {
-    if (exportType === "event") {
-      const url = new URL("https://calendar.google.com/calendar/render");
-      url.searchParams.set("action", "TEMPLATE");
-      url.searchParams.set("text", title);
-      url.searchParams.set("details", details);
-      if (date) {
-        const d = date.replace(/-/g, "");
-        url.searchParams.set("dates", `${d}/${d}`);
-      }
-      window.open(url.toString(), "_blank", "noopener,noreferrer");
-    } else {
-      navigator.clipboard?.writeText(title).catch(() => {});
-      window.open("https://tasks.google.com", "_blank", "noopener,noreferrer");
+    const url = new URL("https://calendar.google.com/calendar/render");
+    url.searchParams.set("action", "TEMPLATE");
+    url.searchParams.set("text", title);
+    url.searchParams.set("details", details);
+    if (date) {
+      const d = date.replace(/-/g, "");
+      url.searchParams.set("dates", `${d}/${d}`);
     }
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
 
     startTransition(async () => {
       await markTaskCalendarExported(taskId, date || undefined);
@@ -70,32 +62,6 @@ export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName 
           </button>
         </div>
 
-        {/* Event vs Task toggle */}
-        <div className="flex gap-2 p-1 bg-[var(--background)] rounded-xl">
-          <button
-            onClick={() => setExportType("event")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-              exportType === "event"
-                ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
-                : "text-[var(--muted)]"
-            }`}
-          >
-            <CalendarDays className="w-3.5 h-3.5" />
-            Мероприятие
-          </button>
-          <button
-            onClick={() => setExportType("task")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-              exportType === "task"
-                ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
-                : "text-[var(--muted)]"
-            }`}
-          >
-            <ListTodo className="w-3.5 h-3.5" />
-            Задача
-          </button>
-        </div>
-
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
@@ -110,7 +76,7 @@ export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName 
 
           <div>
             <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
-              {exportType === "event" ? "Дата мероприятия" : "Запланировано на"}
+              Дата
             </label>
             <input
               type="date"
@@ -130,17 +96,11 @@ export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName 
           </div>
         </div>
 
-        {exportType === "task" && (
-          <p className="text-xs text-[var(--muted)] bg-[var(--background)] rounded-xl px-4 py-3">
-            Название скопируется в буфер обмена — вставьте в Google Tasks.
-          </p>
-        )}
-
         <button
           onClick={handleExport}
-          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-sm transition-opacity"
+          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-sm"
         >
-          {exportType === "event" ? "Открыть в Календаре" : "Открыть Google Tasks"}
+          Открыть в Google Календаре
         </button>
       </div>
     </div>
