@@ -111,6 +111,7 @@ model Goal {
   title       String
   description String?
   status      GoalStatus @default(ACTIVE)
+  sortOrder   Int        @default(0)
   deadline    DateTime?
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   sphere      Sphere     @relation(fields: [sphereId], references: [id], onDelete: Cascade)
@@ -127,14 +128,16 @@ enum TaskStatus {
 }
 
 model Task {
-  id        String     @id @default(cuid())
-  goalId    String
-  title     String
-  notes     String?
-  status    TaskStatus @default(PENDING)
-  goal      Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                   String     @id @default(cuid())
+  goalId               String
+  title                String
+  notes                String?
+  status               TaskStatus @default(PENDING)
+  calendarExportedAt   DateTime?
+  calendarScheduledDate String?
+  goal                 Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
   @@index([goalId])
 }

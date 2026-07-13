@@ -1,27 +1,150 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarPlus, X } from "lucide-react";
+import { useState, useTransition, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { CalendarPlus, X, CalendarDays, ListTodo } from "lucide-react";
+import { markTaskCalendarExported } from "@/actions/goals";
+
+type ExportType = "event" | "task";
 
 type Props = {
+  taskId: string;
   taskTitle: string;
   blockTitle: string;
   sphereName: string;
 };
 
-export function CalendarExportModal({ taskTitle, blockTitle, sphereName }: Props) {
+export function CalendarExportModal({ taskId, taskTitle, blockTitle, sphereName }: Props) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(taskTitle);
+  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [exportType, setExportType] = useState<ExportType>("event");
+  const [, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
   const details = `${sphereName} → ${blockTitle}`;
 
-  function openCalendar() {
-    const url = new URL("https://calendar.google.com/calendar/render");
-    url.searchParams.set("action", "TEMPLATE");
-    url.searchParams.set("text", title);
-    url.searchParams.set("details", details);
-    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  function handleExport() {
+    if (exportType === "event") {
+      const url = new URL("https://calendar.google.com/calendar/render");
+      url.searchParams.set("action", "TEMPLATE");
+      url.searchParams.set("text", title);
+      url.searchParams.set("details", details);
+      if (date) {
+        const d = date.replace(/-/g, "");
+        url.searchParams.set("dates", `${d}/${d}`);
+      }
+      window.open(url.toString(), "_blank", "noopener,noreferrer");
+    } else {
+      navigator.clipboard?.writeText(title).catch(() => {});
+      window.open("https://tasks.google.com", "_blank", "noopener,noreferrer");
+    }
+
+    startTransition(async () => {
+      await markTaskCalendarExported(taskId, date || undefined);
+    });
     setOpen(false);
   }
+
+  const modal = open ? (
+    <div
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/40 backdrop-blur-sm"
+      onClick={() => setOpen(false)}
+    >
+      <div
+        className="w-full max-w-lg bg-[var(--surface)] rounded-t-3xl p-6 pb-10 space-y-5"
+        style={{ maxHeight: "90dvh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-base text-[var(--foreground)]">
+            Добавить в Google Календарь
+          </h3>
+          <button
+            onClick={() => setOpen(false)}
+            className="p-2 rounded-full hover:bg-[var(--background)] text-[var(--muted)] transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Event vs Task toggle */}
+        <div className="flex gap-2 p-1 bg-[var(--background)] rounded-xl">
+          <button
+            onClick={() => setExportType("event")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              exportType === "event"
+                ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                : "text-[var(--muted)]"
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5" />
+            Мероприятие
+          </button>
+          <button
+            onClick={() => setExportType("task")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+              exportType === "task"
+                ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                : "text-[var(--muted)]"
+            }`}
+          >
+            <ListTodo className="w-3.5 h-3.5" />
+            Задача
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
+              Название
+            </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
+              {exportType === "event" ? "Дата мероприятия" : "Запланировано на"}
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
+              Контекст
+            </label>
+            <p className="mt-1 text-sm text-[var(--muted)] bg-[var(--background)] rounded-xl px-4 py-2.5">
+              {details}
+            </p>
+          </div>
+        </div>
+
+        {exportType === "task" && (
+          <p className="text-xs text-[var(--muted)] bg-[var(--background)] rounded-xl px-4 py-3">
+            Название скопируется в буфер обмена — вставьте в Google Tasks.
+          </p>
+        )}
+
+        <button
+          onClick={handleExport}
+          className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-sm transition-opacity"
+        >
+          {exportType === "event" ? "Открыть в Календаре" : "Открыть Google Tasks"}
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -32,62 +155,7 @@ export function CalendarExportModal({ taskTitle, blockTitle, sphereName }: Props
       >
         <CalendarPlus className="w-3.5 h-3.5" />
       </button>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="w-full max-w-lg bg-[var(--surface)] rounded-t-3xl p-6 pb-10 space-y-4 animate-slide-up-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-[var(--foreground)]">
-                Добавить в Google Календарь
-              </h3>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 rounded-full hover:bg-[var(--background)] text-[var(--muted)]"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
-                  Название
-                </label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-2.5 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--muted)] uppercase tracking-wide">
-                  Описание
-                </label>
-                <p className="mt-1 text-sm text-[var(--muted)] bg-[var(--background)] rounded-xl px-4 py-2.5">
-                  {details}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-[var(--muted)]">
-              Откроется Google Календарь с заполненными данными. Там можно выбрать дату, время и тип (мероприятие или задача).
-            </p>
-
-            <button
-              onClick={openCalendar}
-              className="w-full rounded-xl bg-[var(--accent)] text-white font-semibold py-3 text-sm"
-            >
-              Открыть в Google Календаре
-            </button>
-          </div>
-        </div>
-      )}
+      {mounted && createPortal(modal, document.body)}
     </>
   );
 }

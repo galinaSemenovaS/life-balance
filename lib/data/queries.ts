@@ -47,12 +47,13 @@ async function fetchSphereDetailData(userId: string, sphereId: string) {
     }),
     prisma.goal.findMany({
       where: { sphereId, userId, status: { not: "PAUSED" } },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       select: {
         id: true,
         title: true,
         description: true,
         status: true,
+        sortOrder: true,
         deadline: true,
         tasks: {
           orderBy: { createdAt: "asc" },
@@ -61,6 +62,8 @@ async function fetchSphereDetailData(userId: string, sphereId: string) {
             title: true,
             notes: true,
             status: true,
+            calendarExportedAt: true,
+            calendarScheduledDate: true,
           },
         },
       },

@@ -142,6 +142,56 @@ export async function toggleTaskStatus(taskId: string, completed: boolean) {
   revalidateUserData(user.id);
 }
 
+export async function moveGoal(goalId: string, direction: "up" | "down") {
+  const user = await requireUser();
+
+  const goal = await prisma.goal.findFirst({
+    where: { id: goalId, userId: user.id },
+    select: { id: true, sphereId: true },
+  });
+  if (!goal) throw new Error("Goal not found");
+
+  const allGoals = await prisma.goal.findMany({
+    where: { userId: user.id, sphereId: goal.sphereId, status: { not: "PAUSED" } },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+
+  const idx = allGoals.findIndex((g) => g.id === goalId);
+  if (idx < 0) return;
+
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= allGoals.length) return;
+
+  const ordered = allGoals.map((g, i) => ({ id: g.id, sortOrder: i }));
+  [ordered[idx].sortOrder, ordered[swapIdx].sortOrder] = [ordered[swapIdx].sortOrder, ordered[idx].sortOrder];
+
+  await prisma.$transaction(
+    ordered.map((u) => prisma.goal.update({ where: { id: u.id }, data: { sortOrder: u.sortOrder } }))
+  );
+
+  revalidateUserData(user.id);
+}
+
+export async function markTaskCalendarExported(taskId: string, scheduledDate?: string) {
+  const user = await requireUser();
+
+  const task = await prisma.task.findFirst({
+    where: { id: taskId, goal: { userId: user.id } },
+  });
+  if (!task) throw new Error("Task not found");
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      calendarExportedAt: new Date(),
+      calendarScheduledDate: scheduledDate ?? null,
+    },
+  });
+
+  revalidateUserData(user.id);
+}
+
 export async function deleteTask(taskId: string) {
   const user = await requireUser();
 
