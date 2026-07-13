@@ -50,7 +50,7 @@ function TaskItem({ task, blockTitle, sphereName }: { task: Task; blockTitle: st
   }
 
   return (
-    <div className="flex items-center gap-2 py-2 group">
+    <div className="flex items-center gap-2 py-2">
       <button
         onClick={toggle}
         disabled={pending}
@@ -71,7 +71,7 @@ function TaskItem({ task, blockTitle, sphereName }: { task: Task; blockTitle: st
       >
         {task.title}
       </span>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1">
         <CalendarExportModal
           taskTitle={task.title}
           blockTitle={blockTitle}
